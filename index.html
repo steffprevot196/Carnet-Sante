@@ -40,6 +40,26 @@
         .line-clamp-1 { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
         #qrCanvasContainer canvas, #qrCanvasContainer img { border-radius: 12px; }
 
+        /* Google Drive */
+        .gdrive-status-dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: 6px; vertical-align: middle;
+        }
+        .gdrive-status-dot.connected { background: #10b981; box-shadow: 0 0 6px #10b981; }
+        .gdrive-status-dot.expired   { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+        .gdrive-status-dot.offline   { background: #94a3b8; }
+        .gdrive-help ol { list-style: decimal; padding-left: 20px; }
+        .gdrive-help li { margin-bottom: 6px; }
+        .gdrive-help code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+        .drive-input {
+            width: 100%; background: rgba(255,255,255,0.1); color: white;
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+            padding: 8px 12px; font-size: 12px; outline: none;
+            font-family: inherit;
+        }
+        .drive-input::placeholder { color: rgba(199, 210, 254, 0.7); }
+        .drive-input:focus { border-color: rgba(165, 180, 252, 0.8); }
+
         @media print {
             @page { margin: 1.2cm; size: A4 portrait; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -462,6 +482,91 @@
                         <p class="text-sm font-bold text-emerald-400 flex items-center gap-2" id="settingsBackupBadge"><i class="fa-solid fa-circle-check"></i> Vérification...</p>
                     </div>
                     <button onclick="triggerAutoBackupNow()" class="text-xs bg-white text-slate-900 font-bold px-3.5 py-2 rounded-lg hover:bg-indigo-50 transition">Forcer la sauvegarde</button>
+                </div>
+            </div>
+
+
+            <!-- GOOGLE DRIVE CHIFFRÉ -->
+            <div class="bg-gradient-to-br from-blue-900 via-slate-900 to-blue-950 rounded-2xl p-6 text-white shadow-xl space-y-5 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl font-black"><i class="fa-brands fa-google-drive"></i></div>
+
+                <div class="flex items-center gap-3">
+                    <span class="p-3 bg-blue-500/20 border border-blue-400/30 rounded-xl text-blue-300 text-xl"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                    <div>
+                        <h3 class="font-bold text-lg">Sauvegarde Cloud chiffrée (Google Drive)</h3>
+                        <p class="text-xs text-blue-200">Chiffrement AES-256 côté navigateur. Google ne peut pas lire le contenu.</p>
+                    </div>
+                </div>
+
+                <!-- Statut -->
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border border-white/10">
+                    <div class="text-sm">
+                        <span id="googleDriveStatus"><span class="gdrive-status-dot offline"></span>Non configuré</span>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button id="googleConnectBtn" onclick="connectGoogleDrive()" class="text-xs bg-white text-slate-900 font-bold px-3.5 py-2 rounded-lg hover:bg-blue-50 transition">
+                            <i class="fa-brands fa-google mr-1"></i> Autoriser Google
+                        </button>
+                        <button onclick="performEncryptedDriveBackup()" class="text-xs bg-blue-500 hover:bg-blue-600 text-white font-bold px-3.5 py-2 rounded-lg transition">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Sauvegarder maintenant
+                        </button>
+                        <button onclick="disconnectGoogleDrive()" class="text-xs bg-white/10 hover:bg-white/20 text-white font-bold px-3.5 py-2 rounded-lg transition">
+                            Déconnecter
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Configuration Client ID -->
+                <details class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <summary class="cursor-pointer text-sm font-bold text-blue-200 hover:text-white select-none">
+                        ⚙️ Configuration Google Cloud (Client ID)
+                    </summary>
+                    <div class="mt-4 space-y-3">
+                        <input type="text" id="googleClientIdInput" placeholder="xxxxxxxx.apps.googleusercontent.com"
+                               class="drive-input">
+                        <input type="password" id="driveEncryptionPassword" placeholder="Mot de passe de chiffrement (à retenir absolument)"
+                               class="drive-input">
+                        <button onclick="saveGoogleClientId()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 rounded-lg text-xs">
+                            💾 Enregistrer la configuration
+                        </button>
+                        <p class="text-[10px] text-blue-300 leading-relaxed">
+                            🔒 Le mot de passe de chiffrement n'est <b>jamais</b> envoyé à Google. Il chiffre vos données côté navigateur.
+                            <b>Si vous le perdez, vos sauvegardes Drive seront irrécupérables.</b>
+                        </p>
+
+                        <!-- Aide pas-à-pas -->
+                        <details class="gdrive-help text-[11px] bg-white/5 rounded-lg p-3 border border-white/10">
+                            <summary class="cursor-pointer font-bold text-blue-200 hover:text-white">❓ Comment obtenir un Client ID Google ?</summary>
+                            <ol class="mt-2 text-blue-200 space-y-1">
+                                <li>Aller sur <a href="https://console.cloud.google.com" target="_blank" class="text-blue-300 underline">console.cloud.google.com</a></li>
+                                <li>Créer un projet (ex: "Carnet Santé")</li>
+                                <li>Menu ☰ → APIs & Services → Library</li>
+                                <li>Activer <b>Google Drive API</b></li>
+                                <li>Menu ☰ → APIs & Services → OAuth consent screen</li>
+                                <li>Choisir "External" → Remplir nom + email → Enregistrer</li>
+                                <li>Dans <b>Test users</b>, ajoutez votre email Google</li>
+                                <li>Menu ☰ → APIs & Services → Credentials</li>
+                                <li>Create Credentials → OAuth client ID → Web application</li>
+                                <li>Authorized JavaScript origins : <code>https://steffprevot196.github.io</code></li>
+                                <li>Authorized redirect URIs : même URL + <code>/Carnet-Sante/</code></li>
+                                <li>Copier le Client ID et le coller ci-dessus</li>
+                            </ol>
+                            <p class="mt-2 text-blue-300 italic">⚠️ En mode "Testing", seuls les comptes ajoutés dans "Test users" peuvent s'authentifier. Suffisant pour un usage personnel.</p>
+                        </details>
+                    </div>
+                </details>
+
+                <!-- Liste des sauvegardes Drive -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-xs font-bold text-blue-200 uppercase tracking-wider">Snapshots Drive</p>
+                        <button onclick="refreshDriveBackupsList()" class="text-xs text-blue-300 hover:text-white">
+                            <i class="fa-solid fa-rotate mr-1"></i> Rafraîchir
+                        </button>
+                    </div>
+                    <div id="driveBackupsList" class="space-y-1.5 max-h-48 overflow-y-auto">
+                        <p class="text-xs text-blue-300 italic">Cliquez sur "Rafraîchir" pour lister vos sauvegardes.</p>
+                    </div>
                 </div>
             </div>
 
@@ -2010,12 +2115,319 @@
             showToast('Toutes les données ont été réinitialisées.', 'error');
         }
 
+
+        // ============================================
+        // ============ GOOGLE DRIVE CHIFFRÉ ==========
+        // ============================================
+        const SCOPE_DRIVE = 'https://www.googleapis.com/auth/drive.file';
+        const DRIVE_ENC_SALT = 'santepro-drive-v1';
+
+        let googleTokenClient = null;
+        let googleAccessToken = null;
+        let googleTokenExpiry = 0;
+
+        function getGoogleClientId() {
+            return localStorage.getItem('santePro_googleClientId') || '';
+        }
+
+        function initGoogleTokenClient() {
+            const clientId = getGoogleClientId();
+            if (!clientId) return false;
+            if (!window.google?.accounts?.oauth2) {
+                console.warn('[Google] SDK non chargé');
+                return false;
+            }
+
+            if (googleTokenClient) return true;
+
+            googleTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: SCOPE_DRIVE,
+                callback: (resp) => {
+                    if (resp.error) {
+                        showToast('Erreur Google : ' + resp.error, 'error');
+                        return;
+                    }
+                    googleAccessToken = resp.access_token;
+                    googleTokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
+                    localStorage.setItem('santePro_googleLastAuth', new Date().toISOString());
+                    updateGoogleDriveStatus();
+                    showToast('✅ Google Drive connecté', 'success');
+                    // Backup immédiat après autorisation
+                    performEncryptedDriveBackup();
+                }
+            });
+            return true;
+        }
+
+        function isGoogleTokenValid() {
+            return googleAccessToken && Date.now() < googleTokenExpiry;
+        }
+
+        function connectGoogleDrive() {
+            if (!getGoogleClientId()) {
+                showToast('Configurez d\'abord votre Client ID Google', 'error');
+                // Ouvrir le détail de configuration
+                document.querySelectorAll('details').forEach(d => {
+                    if (d.querySelector('#googleClientIdInput')) d.open = true;
+                });
+                return;
+            }
+            if (!initGoogleTokenClient()) {
+                showToast('SDK Google non disponible. Réessayez dans quelques secondes.', 'error');
+                return;
+            }
+            googleTokenClient.requestAccessToken({ prompt: isGoogleTokenValid() ? '' : 'consent' });
+        }
+
+        function disconnectGoogleDrive() {
+            if (googleAccessToken && window.google?.accounts?.oauth2?.revoke) {
+                try { google.accounts.oauth2.revoke(googleAccessToken, () => {}); }
+                catch (e) { console.warn('[Google] revoke failed:', e); }
+            }
+            googleAccessToken = null;
+            googleTokenExpiry = 0;
+            localStorage.removeItem('santePro_googleLastAuth');
+            updateGoogleDriveStatus();
+            showToast('Google Drive déconnecté', 'info');
+        }
+
+        function saveGoogleClientId() {
+            const id = document.getElementById('googleClientIdInput').value.trim();
+            const pwd = document.getElementById('driveEncryptionPassword').value;
+
+            if (!id || !id.endsWith('.apps.googleusercontent.com')) {
+                showToast('Client ID invalide (doit finir par .apps.googleusercontent.com)', 'error');
+                return;
+            }
+            if (!pwd || pwd.length < 8) {
+                showToast('Mot de passe : au moins 8 caractères', 'error');
+                return;
+            }
+            localStorage.setItem('santePro_googleClientId', id);
+            localStorage.setItem('santePro_drivePassword', pwd);
+            // Réinitialiser le client OAuth (au cas où l'ID a changé)
+            googleTokenClient = null;
+            initGoogleTokenClient();
+            updateGoogleDriveStatus();
+            showToast('✅ Configuration enregistrée. Cliquez sur "Autoriser Google".', 'success');
+        }
+
+        function updateGoogleDriveStatus() {
+            const status = document.getElementById('googleDriveStatus');
+            if (!status) return;
+            const clientId = getGoogleClientId();
+
+            if (!clientId) {
+                status.innerHTML = '<span class="gdrive-status-dot offline"></span>Non configuré — entrez votre Client ID ci-dessous';
+                return;
+            }
+
+            const lastBackup = localStorage.getItem('santePro_lastGoogleBackup');
+            const lastAuth = localStorage.getItem('santePro_googleLastAuth');
+
+            if (isGoogleTokenValid()) {
+                status.innerHTML = `<span class="gdrive-status-dot connected"></span><b>Connecté</b>
+                    ${lastBackup ? `<span class="text-blue-300 text-xs"> • Dernière sync : ${new Date(lastBackup).toLocaleString('fr-FR')}</span>` : ''}`;
+            } else if (lastAuth) {
+                status.innerHTML = `<span class="gdrive-status-dot expired"></span>Session expirée — <a href="#" onclick="connectGoogleDrive(); return false;" class="text-blue-300 underline">Reconnecter</a>
+                    <span class="text-blue-300 text-xs"> • Dernière auth : ${new Date(lastAuth).toLocaleDateString('fr-FR')}</span>`;
+            } else {
+                status.innerHTML = '<span class="gdrive-status-dot offline"></span>Prêt — <a href="#" onclick="connectGoogleDrive(); return false;" class="text-blue-300 underline">Cliquez sur "Autoriser Google"</a>';
+            }
+        }
+
+        // --- CHIFFREMENT AES-GCM ---
+        async function deriveDriveKey(password) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+            );
+            return crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt: enc.encode(DRIVE_ENC_SALT), iterations: 150000, hash: 'SHA-256' },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false, ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptPayloadForDrive(plaintext, password) {
+            const key = await deriveDriveKey(password);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext)
+            );
+            const combined = new Uint8Array(iv.length + ct.byteLength);
+            combined.set(iv, 0);
+            combined.set(new Uint8Array(ct), iv.length);
+            return uint8ToBase64(combined);
+        }
+
+        async function decryptPayloadFromDrive(ciphertextB64, password) {
+            const key = await deriveDriveKey(password);
+            const bytes = base64ToUint8(ciphertextB64);
+            const iv = bytes.slice(0, 12);
+            const ct = bytes.slice(12);
+            const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+            return new TextDecoder().decode(pt);
+        }
+
+        // --- UPLOAD VERS DRIVE (appDataFolder) ---
+        async function performEncryptedDriveBackup() {
+            if (!isGoogleTokenValid()) {
+                showToast('Reconnectez Google Drive', 'error');
+                return false;
+            }
+            const password = localStorage.getItem('santePro_drivePassword');
+            if (!password) {
+                showToast('Mot de passe de chiffrement manquant', 'error');
+                return false;
+            }
+            if (!window.crypto?.subtle) {
+                showToast('Chiffrement indisponible (HTTPS requis)', 'error');
+                return false;
+            }
+
+            try {
+                const plaintext = JSON.stringify({
+                    version: 3,
+                    exportedAt: new Date().toISOString(),
+                    appState
+                });
+                const encryptedB64 = await encryptPayloadForDrive(plaintext, password);
+                const filename = `santepro-backup-${new Date().toISOString().split('T')[0]}.enc`;
+
+                const metadata = { name: filename, parents: ['appDataFolder'], mimeType: 'application/octet-stream' };
+                const boundary = '----santepro' + Date.now();
+                const body =
+                    `--${boundary}\r\n` +
+                    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+                    JSON.stringify(metadata) + `\r\n` +
+                    `--${boundary}\r\n` +
+                    `Content-Type: application/octet-stream\r\n\r\n` +
+                    encryptedB64 + `\r\n` +
+                    `--${boundary}--`;
+
+                const response = await fetch(
+                    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${googleAccessToken}`,
+                            'Content-Type': `multipart/related; boundary=${boundary}`
+                        },
+                        body
+                    }
+                );
+
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${err.substring(0, 200)}`);
+                }
+
+                localStorage.setItem('santePro_lastGoogleBackup', new Date().toISOString());
+                showToast(`☁️ Sauvegarde Drive OK (${new Date().toLocaleTimeString('fr-FR')})`, 'success');
+                updateGoogleDriveStatus();
+                refreshDriveBackupsList();
+                return true;
+            } catch (err) {
+                console.error('[Drive backup]', err);
+                showToast('❌ Échec sauvegarde Drive : ' + err.message, 'error');
+                return false;
+            }
+        }
+
+        // --- LISTER LES SAUVEGARDES DRIVE ---
+        async function listDriveBackups() {
+            if (!isGoogleTokenValid()) return [];
+            try {
+                const res = await fetch(
+                    "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'santepro-backup'&orderBy=createdTime desc&fields=files(id,name,createdTime,size)&pageSize=20",
+                    { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+                );
+                const data = await res.json();
+                return data.files || [];
+            } catch (e) {
+                console.error('[Drive list]', e);
+                return [];
+            }
+        }
+
+        async function refreshDriveBackupsList() {
+            const container = document.getElementById('driveBackupsList');
+            if (!container) return;
+
+            if (!getGoogleClientId()) {
+                container.innerHTML = '<p class="text-xs text-blue-300 italic">Configurez d\'abord votre Client ID.</p>';
+                return;
+            }
+            if (!isGoogleTokenValid()) {
+                container.innerHTML = '<p class="text-xs text-amber-300">Reconnectez Google d\'abord.</p>';
+                return;
+            }
+
+            container.innerHTML = '<p class="text-xs text-blue-300 italic">⏳ Chargement...</p>';
+            const files = await listDriveBackups();
+
+            if (files.length === 0) {
+                container.innerHTML = '<p class="text-xs text-blue-300 italic">Aucune sauvegarde trouvée.</p>';
+                return;
+            }
+
+            container.innerHTML = files.map(f => `
+                <div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-2 text-xs">
+                    <div class="min-w-0">
+                        <p class="font-bold text-white truncate">${esc(f.name)}</p>
+                        <p class="text-[10px] text-blue-300">${new Date(f.createdTime).toLocaleString('fr-FR')} • ${f.size ? (f.size/1024).toFixed(1) : '?'} Ko</p>
+                    </div>
+                    <button onclick="restoreFromDrive('${f.id}')"
+                            class="bg-white/10 hover:bg-white/20 text-white font-bold px-2.5 py-1 rounded text-[10px] shrink-0 ml-2">
+                        Restaurer
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function restoreFromDrive(fileId) {
+            const password = prompt('🔒 Mot de passe de déchiffrement :');
+            if (!password) return;
+
+            try {
+                const res = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const ciphertextB64 = await res.text();
+                const plaintext = await decryptPayloadFromDrive(ciphertextB64, password);
+                const parsed = JSON.parse(plaintext);
+
+                if (!parsed.appState?.profiles) throw new Error('Structure invalide');
+
+                if (!confirm('⚠️ Remplacer TOUTES les données actuelles par cette sauvegarde ?')) return;
+
+                appState = parsed.appState;
+                if (!appState.liaison) appState.liaison = {};
+                if (appState.profiles) {
+                    appState.profiles.forEach(p => { if (p.bloodType === undefined) p.bloodType = ''; });
+                }
+                saveState();
+                renderAll();
+                showToast('✅ Données restaurées depuis Drive', 'success');
+            } catch (err) {
+                console.error('[Drive restore]', err);
+                showToast('❌ Déchiffrement impossible (mot de passe ?)', 'error');
+            }
+        }
+
         // --- BOOTSTRAP ---
         window.addEventListener('DOMContentLoaded', async function() {
             if (!supportsHas) document.body.classList.add('no-has');
             await checkQRCodeInURL();
             loadState();
             checkDailyAutoBackup();
+            updateGoogleDriveStatus();
+
 
             const today = new Date().toISOString().split('T')[0];
             const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
