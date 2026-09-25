@@ -7,7 +7,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -37,47 +37,28 @@
         .scan-animation { background: linear-gradient(to bottom, transparent, rgba(99, 102, 241, 0.3), transparent); animation: scan 2s infinite ease-in-out; }
         @keyframes scan { 0% { top: 0%; } 50% { top: 85%; } 100% { top: 0%; } }
         .line-clamp-1 { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+        #qrCanvasContainer canvas, #qrCanvasContainer img { border-radius: 12px; }
 
-        /* ============ IMPRESSION A4 ============ */
         @media print {
             @page { margin: 1.2cm; size: A4 portrait; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
             body:has(#view-urgency:not(.hidden)) > *:not(#mainContentArea),
             body:has(#view-urgency:not(.hidden)) #mainContentArea > *:not(#view-urgency),
-            body:has(#view-urgency:not(.hidden)) #view-urgency > *:not(#urgencySheetContainer) {
-                display: none !important;
-            }
+            body:has(#view-urgency:not(.hidden)) #view-urgency > *:not(#urgencySheetContainer) { display: none !important; }
             body:has(#view-liaison:not(.hidden)) > *:not(#mainContentArea),
             body:has(#view-liaison:not(.hidden)) #mainContentArea > *:not(#view-liaison),
-            body:has(#view-liaison:not(.hidden)) #view-liaison > *:not(#liaisonSheet) {
-                display: none !important;
-            }
+            body:has(#view-liaison:not(.hidden)) #view-liaison > *:not(#liaisonSheet) { display: none !important; }
             body.no-has.printing-urgency > *:not(#mainContentArea),
             body.no-has.printing-urgency #mainContentArea > *:not(#view-urgency),
-            body.no-has.printing-urgency #view-urgency > *:not(#urgencySheetContainer) {
-                display: none !important;
-            }
+            body.no-has.printing-urgency #view-urgency > *:not(#urgencySheetContainer) { display: none !important; }
             body.no-has.printing-liaison > *:not(#mainContentArea),
             body.no-has.printing-liaison #mainContentArea > *:not(#view-liaison),
-            body.no-has.printing-liaison #view-liaison > *:not(#liaisonSheet) {
-                display: none !important;
-            }
-
+            body.no-has.printing-liaison #view-liaison > *:not(#liaisonSheet) { display: none !important; }
             html, body { height: auto !important; overflow: visible !important; background: white !important; }
             #mainContentArea { overflow: visible !important; padding: 0 !important; background: white !important; height: auto !important; display: block !important; }
-
-            #urgencySheetContainer > div, #liaisonSheet {
-                box-shadow: none !important; border: none !important;
-                border-radius: 0 !important; padding: 0 !important;
-                max-width: 100% !important; margin: 0 !important;
-            }
-            #urgencySheetContainer section, #liaisonSheet section {
-                page-break-inside: avoid; break-inside: avoid;
-            }
-            #urgencySheetContainer table tr, #liaisonSheet table tr {
-                page-break-inside: avoid; break-inside: avoid;
-            }
+            #urgencySheetContainer > div, #liaisonSheet { box-shadow: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+            #urgencySheetContainer section, #liaisonSheet section { page-break-inside: avoid; break-inside: avoid; }
+            #urgencySheetContainer table tr, #liaisonSheet table tr { page-break-inside: avoid; break-inside: avoid; }
             input, textarea { border: none !important; background: transparent !important; resize: none !important; }
             .print-hide { display: none !important; }
         }
@@ -87,12 +68,9 @@
 
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 print-hide"></div>
 
-    <!-- Sidebar Desktop -->
     <aside class="w-72 bg-white border-r border-slate-200 hidden md:flex flex-col z-20 shrink-0 select-none">
         <div class="p-5 border-b border-slate-100 flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 text-xl font-black">
-                <i class="fa-solid fa-heart-pulse"></i>
-            </div>
+            <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 text-xl font-black"><i class="fa-solid fa-heart-pulse"></i></div>
             <div>
                 <h1 class="text-base font-bold text-slate-900 leading-tight">SantéPro</h1>
                 <p class="text-xs text-slate-400 font-medium">Carnet de Santé Intelligent</p>
@@ -114,9 +92,7 @@
             <div class="relative">
                 <select id="profileSelector" aria-label="Sélectionner un profil" class="w-full appearance-none bg-white border border-slate-200 text-slate-800 py-2.5 pl-10 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-sm shadow-sm cursor-pointer"></select>
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-lg" id="profileAvatarDisplay">👶</div>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                    <i class="fa-solid fa-chevron-down text-xs"></i>
-                </div>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
             </div>
             <div class="mt-2 text-[11px] text-slate-500 flex justify-between px-1">
                 <span id="profileQuickInfo">--</span>
@@ -125,30 +101,14 @@
         </div>
 
         <nav class="flex-1 overflow-y-auto p-3 space-y-1">
-            <a href="#" onclick="switchView('dashboard'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all bg-indigo-50 text-indigo-600" data-view="dashboard">
-                <i class="fa-solid fa-chart-pie w-5 text-center text-base"></i> Tableau de bord
-            </a>
-            <a href="#" onclick="switchView('growth'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="growth">
-                <i class="fa-solid fa-child-reaching w-5 text-center text-base"></i> Croissance & OMS
-            </a>
-            <a href="#" onclick="switchView('documents'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="documents">
-                <i class="fa-solid fa-folder-open w-5 text-center text-base"></i> Documents & Scanner
-            </a>
-            <a href="#" onclick="switchView('appointments'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="appointments">
-                <i class="fa-solid fa-calendar-check w-5 text-center text-base"></i> Rendez-vous & Rappels
-            </a>
-            <a href="#" onclick="switchView('vaccines'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="vaccines">
-                <i class="fa-solid fa-syringe w-5 text-center text-base"></i> Vaccins & Jalons
-            </a>
-            <a href="#" onclick="switchView('liaison'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="liaison">
-                <i class="fa-solid fa-pen-to-square w-5 text-center text-base"></i> Fiche de Liaison
-            </a>
-            <a href="#" onclick="generateAndShowUrgencySheet(); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-rose-600 hover:bg-rose-50 transition-all" data-view="urgency">
-                <i class="fa-solid fa-kit-medical w-5 text-center text-base"></i> Fiche d'Urgence
-            </a>
-            <a href="#" onclick="switchView('settings'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="settings">
-                <i class="fa-solid fa-database w-5 text-center text-base"></i> Données & Sauvegardes
-            </a>
+            <a href="#" onclick="switchView('dashboard'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all bg-indigo-50 text-indigo-600" data-view="dashboard"><i class="fa-solid fa-chart-pie w-5 text-center text-base"></i> Tableau de bord</a>
+            <a href="#" onclick="switchView('growth'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="growth"><i class="fa-solid fa-child-reaching w-5 text-center text-base"></i> Croissance & OMS</a>
+            <a href="#" onclick="switchView('documents'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="documents"><i class="fa-solid fa-folder-open w-5 text-center text-base"></i> Documents & Scanner</a>
+            <a href="#" onclick="switchView('appointments'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="appointments"><i class="fa-solid fa-calendar-check w-5 text-center text-base"></i> Rendez-vous & Rappels</a>
+            <a href="#" onclick="switchView('vaccines'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="vaccines"><i class="fa-solid fa-syringe w-5 text-center text-base"></i> Vaccins & Jalons</a>
+            <a href="#" onclick="switchView('liaison'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="liaison"><i class="fa-solid fa-pen-to-square w-5 text-center text-base"></i> Fiche de Liaison</a>
+            <a href="#" onclick="generateAndShowUrgencySheet(); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-rose-600 hover:bg-rose-50 transition-all" data-view="urgency"><i class="fa-solid fa-kit-medical w-5 text-center text-base"></i> Fiche d'Urgence</a>
+            <a href="#" onclick="switchView('settings'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="settings"><i class="fa-solid fa-database w-5 text-center text-base"></i> Données & Sauvegardes</a>
         </nav>
 
         <div class="p-4 border-t border-slate-100 bg-slate-50/50">
@@ -163,20 +123,14 @@
         </div>
     </aside>
 
-    <!-- Mobile Header -->
     <header class="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between z-30 shrink-0">
         <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold">
-                <i class="fa-solid fa-heart-pulse"></i>
-            </div>
+            <div class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-bold"><i class="fa-solid fa-heart-pulse"></i></div>
             <span class="font-bold text-slate-800 text-base">SantéPro</span>
         </div>
-        <button onclick="toggleMobileMenu()" aria-label="Ouvrir le menu" class="text-slate-600 p-2 focus:outline-none">
-            <i class="fa-solid fa-bars text-xl"></i>
-        </button>
+        <button onclick="toggleMobileMenu()" aria-label="Ouvrir le menu" class="text-slate-600 p-2 focus:outline-none"><i class="fa-solid fa-bars text-xl"></i></button>
     </header>
 
-    <!-- Mobile Drawer -->
     <div id="mobileMenu" class="fixed inset-0 bg-slate-900/50 z-50 hidden backdrop-blur-sm transition-opacity">
         <div class="bg-white w-72 h-full shadow-2xl p-5 flex flex-col absolute right-0 transform translate-x-full transition-transform duration-300" id="mobileMenuPanel">
             <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
@@ -186,9 +140,7 @@
             <div class="mb-6">
                 <div class="flex items-center justify-between mb-2">
                     <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Profil Actif</label>
-                    <button onclick="editCurrentProfile()" class="text-xs text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1">
-                        <i class="fa-solid fa-pen text-[10px]"></i> Modifier
-                    </button>
+                    <button onclick="editCurrentProfile()" class="text-xs text-slate-500 hover:text-slate-700 font-semibold flex items-center gap-1"><i class="fa-solid fa-pen text-[10px]"></i> Modifier</button>
                 </div>
                 <select id="mobileProfileSelector" aria-label="Sélectionner un profil" class="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl font-medium text-sm"></select>
             </div>
@@ -207,7 +159,6 @@
 
     <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8 flex flex-col h-full relative" id="mainContentArea">
 
-        <!-- VIEW 1: DASHBOARD -->
         <div id="view-dashboard" class="view-section fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
                 <div class="flex items-center gap-4">
@@ -218,64 +169,42 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <button onclick="openModal('addGrowthModal')" class="flex-1 sm:flex-initial bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-200/60">
-                        <i class="fa-solid fa-plus mr-1"></i> Mesure
-                    </button>
-                    <button onclick="openModal('addAppointmentModal')" class="flex-1 sm:flex-initial bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-200/60">
-                        <i class="fa-regular fa-calendar-plus mr-1"></i> RDV
-                    </button>
-                    <button onclick="openModal('addDocumentModal')" class="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-md shadow-indigo-200">
-                        <i class="fa-solid fa-scanner mr-1"></i> Scanner
-                    </button>
+                    <button onclick="openModal('addGrowthModal')" class="flex-1 sm:flex-initial bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-200/60"><i class="fa-solid fa-plus mr-1"></i> Mesure</button>
+                    <button onclick="openModal('addAppointmentModal')" class="flex-1 sm:flex-initial bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-4 py-2.5 rounded-xl text-xs transition border border-indigo-200/60"><i class="fa-regular fa-calendar-plus mr-1"></i> RDV</button>
+                    <button onclick="openModal('addDocumentModal')" class="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-md shadow-indigo-200"><i class="fa-solid fa-scanner mr-1"></i> Scanner</button>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-cake-candles"></i></div>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Âge Actuel</p>
-                        <p class="text-lg font-black text-slate-800 truncate" id="statAge">--</p>
-                    </div>
+                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Âge Actuel</p><p class="text-lg font-black text-slate-800 truncate" id="statAge">--</p></div>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-weight-scale"></i></div>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Poids</p>
-                        <p class="text-lg font-black text-slate-800 truncate" id="statWeight">-- kg</p>
-                    </div>
+                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Poids</p><p class="text-lg font-black text-slate-800 truncate" id="statWeight">-- kg</p></div>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-ruler-vertical"></i></div>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Taille</p>
-                        <p class="text-lg font-black text-slate-800 truncate" id="statHeight">-- cm</p>
-                    </div>
+                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Taille</p><p class="text-lg font-black text-slate-800 truncate" id="statHeight">-- cm</p></div>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-shield-virus"></i></div>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaccinations</p>
-                        <p class="text-sm font-bold text-slate-800 truncate" id="statVaccines">--</p>
-                    </div>
+                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaccinations</p><p class="text-sm font-bold text-slate-800 truncate" id="statVaccines">--</p></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
                     <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                            <i class="fa-regular fa-calendar-check text-indigo-600 text-base"></i> Prochains Rendez-vous
-                        </h3>
+                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-regular fa-calendar-check text-indigo-600 text-base"></i> Prochains Rendez-vous</h3>
                         <button onclick="switchView('appointments')" class="text-xs text-indigo-600 hover:underline font-semibold">Voir tout</button>
                     </div>
                     <div class="p-5 flex-1 divide-y divide-slate-100" id="dashAppointmentsList"></div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
                     <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                            <i class="fa-solid fa-file-medical text-indigo-600 text-base"></i> Documents Récents
-                        </h3>
+                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-file-medical text-indigo-600 text-base"></i> Documents Récents</h3>
                         <button onclick="switchView('documents')" class="text-xs text-indigo-600 hover:underline font-semibold">Voir tout</button>
                     </div>
                     <div class="p-5 flex-1 divide-y divide-slate-100" id="dashDocumentsList"></div>
@@ -283,28 +212,19 @@
             </div>
         </div>
 
-        <!-- VIEW 2: GROWTH -->
         <div id="view-growth" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-black text-slate-900">Suivi de Croissance & Normes OMS</h2>
                     <p class="text-sm text-slate-500">Comparaison des mesures aux standards de santé mondiaux.</p>
                 </div>
-                <button onclick="openModal('addGrowthModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Saisir une mesure
-                </button>
+                <button onclick="openModal('addGrowthModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2"><i class="fa-solid fa-plus"></i> Saisir une mesure</button>
             </div>
 
             <div class="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-sm inline-flex gap-1">
-                <button onclick="setGrowthMetric('weight')" id="btnMetricWeight" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm">
-                    <i class="fa-solid fa-weight-scale mr-1.5"></i> Poids (kg)
-                </button>
-                <button onclick="setGrowthMetric('height')" id="btnMetricHeight" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">
-                    <i class="fa-solid fa-ruler-vertical mr-1.5"></i> Taille (cm)
-                </button>
-                <button onclick="setGrowthMetric('headCirc')" id="btnMetricHead" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">
-                    <i class="fa-solid fa-circle-dot mr-1.5"></i> Périmètre Crânien (cm)
-                </button>
+                <button onclick="setGrowthMetric('weight')" id="btnMetricWeight" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm"><i class="fa-solid fa-weight-scale mr-1.5"></i> Poids (kg)</button>
+                <button onclick="setGrowthMetric('height')" id="btnMetricHeight" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-ruler-vertical mr-1.5"></i> Taille (cm)</button>
+                <button onclick="setGrowthMetric('headCirc')" id="btnMetricHead" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-circle-dot mr-1.5"></i> Périmètre Crânien (cm)</button>
             </div>
 
             <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
@@ -313,9 +233,7 @@
                     <div id="growthChartEmpty" class="absolute inset-0 hidden flex-col items-center justify-center text-center gap-2">
                         <i class="fa-solid fa-chart-line text-4xl text-slate-300"></i>
                         <p class="text-sm text-slate-400 font-medium">Aucune mesure à afficher pour ce profil.</p>
-                        <button onclick="openModal('addGrowthModal')" class="mt-2 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-3 py-2 rounded-lg">
-                            <i class="fa-solid fa-plus mr-1"></i> Ajouter une mesure
-                        </button>
+                        <button onclick="openModal('addGrowthModal')" class="mt-2 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-plus mr-1"></i> Ajouter une mesure</button>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 pt-2 border-t border-slate-100">
@@ -326,19 +244,12 @@
             </div>
 
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 class="font-bold text-slate-800 text-sm">Historique complet des relevés</h3>
-                </div>
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50"><h3 class="font-bold text-slate-800 text-sm">Historique complet des relevés</h3></div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-50 text-slate-400 uppercase text-[11px] font-bold tracking-wider border-b border-slate-100">
-                                <th class="p-4">Date Relevé</th>
-                                <th class="p-4">Âge au Relevé</th>
-                                <th class="p-4">Poids</th>
-                                <th class="p-4">Taille</th>
-                                <th class="p-4">Périmètre Crânien</th>
-                                <th class="p-4 text-right">Actions</th>
+                                <th class="p-4">Date Relevé</th><th class="p-4">Âge au Relevé</th><th class="p-4">Poids</th><th class="p-4">Taille</th><th class="p-4">Périmètre Crânien</th><th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="growthHistoryTable" class="text-sm divide-y divide-slate-100 font-medium"></tbody>
@@ -347,16 +258,13 @@
             </div>
         </div>
 
-        <!-- VIEW 3: DOCUMENTS -->
         <div id="view-documents" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-black text-slate-900">Documents Médicaux & Scanner</h2>
                     <p class="text-sm text-slate-500">Stockage sécurisé, numérisation d'ordonnances et d'examens.</p>
                 </div>
-                <button onclick="openModal('addDocumentModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Numériser / Ajouter
-                </button>
+                <button onclick="openModal('addDocumentModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up"></i> Numériser / Ajouter</button>
             </div>
 
             <div class="flex flex-col md:flex-row gap-4 justify-between">
@@ -376,21 +284,17 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="documentsGrid"></div>
         </div>
 
-        <!-- VIEW 4: APPOINTMENTS -->
         <div id="view-appointments" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-black text-slate-900">Gestion des Rendez-vous</h2>
                     <p class="text-sm text-slate-500">Consultations, spécialistes et suivis de santé.</p>
                 </div>
-                <button onclick="openModal('addAppointmentModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Nouveau Rendez-vous
-                </button>
+                <button onclick="openModal('addAppointmentModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2"><i class="fa-solid fa-plus"></i> Nouveau Rendez-vous</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="appointmentsGrid"></div>
         </div>
 
-        <!-- VIEW 5: VACCINES -->
         <div id="view-vaccines" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -398,31 +302,22 @@
                     <p class="text-sm text-slate-500">Calendrier vaccinal recommandé et grandes étapes de croissance.</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="openModal('addVaccineModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-md shadow-indigo-200 flex items-center gap-1.5">
-                        <i class="fa-solid fa-syringe"></i> Vaccin
-                    </button>
-                    <button onclick="openModal('addMilestoneModal')" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-1.5">
-                        <i class="fa-solid fa-star"></i> Jalon
-                    </button>
+                    <button onclick="openModal('addVaccineModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-md shadow-indigo-200 flex items-center gap-1.5"><i class="fa-solid fa-syringe"></i> Vaccin</button>
+                    <button onclick="openModal('addMilestoneModal')" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-1.5"><i class="fa-solid fa-star"></i> Jalon</button>
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-                    <h3 class="font-bold text-slate-800 text-base flex items-center gap-2 border-b border-slate-100 pb-3">
-                        <i class="fa-solid fa-syringe text-indigo-600"></i> Carnet de Vaccination
-                    </h3>
+                    <h3 class="font-bold text-slate-800 text-base flex items-center gap-2 border-b border-slate-100 pb-3"><i class="fa-solid fa-syringe text-indigo-600"></i> Carnet de Vaccination</h3>
                     <div class="space-y-3" id="vaccinesList"></div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-                    <h3 class="font-bold text-slate-800 text-base flex items-center gap-2 border-b border-slate-100 pb-3">
-                        <i class="fa-solid fa-award text-indigo-600"></i> Etapes clés du développement
-                    </h3>
+                    <h3 class="font-bold text-slate-800 text-base flex items-center gap-2 border-b border-slate-100 pb-3"><i class="fa-solid fa-award text-indigo-600"></i> Etapes clés du développement</h3>
                     <div class="space-y-3" id="milestonesList"></div>
                 </div>
             </div>
         </div>
 
-        <!-- VIEW 5.5: FICHE DE LIAISON -->
         <div id="view-liaison" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print-hide">
                 <div>
@@ -430,25 +325,16 @@
                     <p class="text-sm text-slate-500">Document essentiel en cas d'urgence. À imprimer et glisser dans le portefeuille.</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="saveLiaison()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-emerald-200 flex items-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i> Enregistrer
-                    </button>
-                    <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-slate-200 flex items-center gap-2">
-                        <i class="fa-solid fa-print"></i> Imprimer / PDF
-                    </button>
-                    <button onclick="generateAndShowUrgencySheet()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-rose-200 flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> Fiche d'Urgence
-                    </button>
+                    <button onclick="saveLiaison()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-emerald-200 flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+                    <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-slate-200 flex items-center gap-2"><i class="fa-solid fa-print"></i> Imprimer / PDF</button>
+                    <button onclick="generateAndShowUrgencySheet()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-rose-200 flex items-center gap-2"><i class="fa-solid fa-bolt"></i> Fiche d'Urgence</button>
                 </div>
             </div>
 
             <div id="liaisonSheet" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-8 max-w-4xl mx-auto">
-
                 <div class="flex items-start justify-between border-b-2 border-indigo-600 pb-4 mb-6">
                     <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-2xl font-black">
-                            <i class="fa-solid fa-id-card-clip"></i>
-                        </div>
+                        <div class="w-14 h-14 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-2xl font-black"><i class="fa-solid fa-id-card-clip"></i></div>
                         <div>
                             <h1 class="text-2xl font-black text-slate-900 leading-tight">Fiche de Liaison Médicale</h1>
                             <p class="text-xs text-slate-500 font-medium">Document confidentiel — À présenter en cas d'urgence</p>
@@ -461,52 +347,28 @@
                 </div>
 
                 <section class="mb-6">
-                    <h2 class="text-sm font-black text-indigo-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs">1</span>
-                        Informations Personnelles
-                    </h2>
+                    <h2 class="text-sm font-black text-indigo-700 uppercase tracking-wider mb-3 flex items-center gap-2"><span class="w-6 h-6 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs">1</span> Informations Personnelles</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Nom & Prénom</p>
-                            <p class="font-bold text-slate-800" id="liaisonName">--</p>
-                        </div>
-                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Date de naissance</p>
-                            <p class="font-bold text-slate-800" id="liaisonDob">--</p>
-                        </div>
-                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Groupe sanguin</p>
-                            <input type="text" id="liaisonBloodType" placeholder="Ex: A+, O-, inconnu" class="w-full bg-transparent font-bold text-slate-800 outline-none focus:bg-white focus:px-1 rounded">
-                        </div>
-                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Personne à contacter en urgence</p>
-                            <input type="text" id="liaisonEmergency" placeholder="Nom, lien de parenté, téléphone" class="w-full bg-transparent font-bold text-slate-800 outline-none focus:bg-white focus:px-1 rounded text-sm">
-                        </div>
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Nom & Prénom</p><p class="font-bold text-slate-800" id="liaisonName">--</p></div>
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Date de naissance</p><p class="font-bold text-slate-800" id="liaisonDob">--</p></div>
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Groupe sanguin</p><input type="text" id="liaisonBloodType" placeholder="Ex: A+, O-, inconnu" class="w-full bg-transparent font-bold text-slate-800 outline-none focus:bg-white focus:px-1 rounded"></div>
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Personne à contacter en urgence</p><input type="text" id="liaisonEmergency" placeholder="Nom, lien de parenté, téléphone" class="w-full bg-transparent font-bold text-slate-800 outline-none focus:bg-white focus:px-1 rounded text-sm"></div>
                     </div>
                 </section>
 
                 <section class="mb-6">
-                    <h2 class="text-sm font-black text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-rose-600 text-white rounded-lg flex items-center justify-center text-xs">2</span>
-                        Alertes & Antécédents Importants
-                    </h2>
+                    <h2 class="text-sm font-black text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2"><span class="w-6 h-6 bg-rose-600 text-white rounded-lg flex items-center justify-center text-xs">2</span> Alertes & Antécédents Importants</h2>
                     <div class="space-y-3">
                         <div class="bg-rose-50 rounded-xl p-3 border border-rose-100">
-                            <label class="text-[10px] uppercase tracking-wider text-rose-500 font-bold mb-1 block">
-                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Allergies connues
-                            </label>
+                            <label class="text-[10px] uppercase tracking-wider text-rose-500 font-bold mb-1 block"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Allergies connues</label>
                             <textarea id="liaisonAllergies" rows="2" placeholder="Ex: Pénicilline, latex, arachides... ou « Aucune connue »" class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded resize-none"></textarea>
                         </div>
                         <div class="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                            <label class="text-[10px] uppercase tracking-wider text-amber-600 font-bold mb-1 block">
-                                <i class="fa-solid fa-heart-crack mr-1"></i> Pathologies chroniques / Antécédents majeurs
-                            </label>
+                            <label class="text-[10px] uppercase tracking-wider text-amber-600 font-bold mb-1 block"><i class="fa-solid fa-heart-crack mr-1"></i> Pathologies chroniques / Antécédents majeurs</label>
                             <textarea id="liaisonChronic" rows="2" placeholder="Ex: Hypertension, diabète, asthme..." class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded resize-none"></textarea>
                         </div>
                         <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                            <label class="text-[10px] uppercase tracking-wider text-blue-600 font-bold mb-1 block">
-                                <i class="fa-solid fa-microchip mr-1"></i> Dispositifs particuliers
-                            </label>
+                            <label class="text-[10px] uppercase tracking-wider text-blue-600 font-bold mb-1 block"><i class="fa-solid fa-microchip mr-1"></i> Dispositifs particuliers</label>
                             <input type="text" id="liaisonDevices" placeholder="Ex: Porteur d'un stimulateur cardiaque, lunettes/lentilles..." class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded">
                         </div>
                     </div>
@@ -514,22 +376,14 @@
 
                 <section class="mb-6">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-sm font-black text-emerald-700 uppercase tracking-wider flex items-center gap-2">
-                            <span class="w-6 h-6 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs">3</span>
-                            Traitements en Cours (Ordonnances)
-                        </h2>
-                        <button onclick="addMedicationRow()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 print-hide">
-                            <i class="fa-solid fa-plus text-[10px]"></i> Ajouter
-                        </button>
+                        <h2 class="text-sm font-black text-emerald-700 uppercase tracking-wider flex items-center gap-2"><span class="w-6 h-6 bg-emerald-600 text-white rounded-lg flex items-center justify-center text-xs">3</span> Traitements en Cours (Ordonnances)</h2>
+                        <button onclick="addMedicationRow()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 print-hide"><i class="fa-solid fa-plus text-[10px]"></i> Ajouter</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse text-sm">
                             <thead>
                                 <tr class="bg-emerald-50 text-emerald-700 uppercase text-[10px] font-bold tracking-wider">
-                                    <th class="p-2 rounded-l-lg">Médicament</th>
-                                    <th class="p-2">Posologie / Fréquence</th>
-                                    <th class="p-2">Indication</th>
-                                    <th class="p-2 rounded-r-lg w-10 print-hide"></th>
+                                    <th class="p-2 rounded-l-lg">Médicament</th><th class="p-2">Posologie / Fréquence</th><th class="p-2">Indication</th><th class="p-2 rounded-r-lg w-10 print-hide"></th>
                                 </tr>
                             </thead>
                             <tbody id="liaisonMedicationsBody" class="divide-y divide-slate-100"></tbody>
@@ -539,37 +393,25 @@
                 </section>
 
                 <section class="mb-6">
-                    <h2 class="text-sm font-black text-purple-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-purple-600 text-white rounded-lg flex items-center justify-center text-xs">4</span>
-                        Compléments, Automédication ou Autres
-                    </h2>
+                    <h2 class="text-sm font-black text-purple-700 uppercase tracking-wider mb-3 flex items-center gap-2"><span class="w-6 h-6 bg-purple-600 text-white rounded-lg flex items-center justify-center text-xs">4</span> Compléments, Automédication ou Autres</h2>
                     <div class="bg-purple-50 rounded-xl p-3 border border-purple-100">
                         <textarea id="liaisonSupplements" rows="2" placeholder="Ex: Vitamine D 1000 UI/jour, Magnésium..." class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded resize-none"></textarea>
                     </div>
                 </section>
 
                 <section class="mb-4">
-                    <h2 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span class="w-6 h-6 bg-slate-700 text-white rounded-lg flex items-center justify-center text-xs">5</span>
-                        Professionnels de Santé de Référence
-                    </h2>
+                    <h2 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2"><span class="w-6 h-6 bg-slate-700 text-white rounded-lg flex items-center justify-center text-xs">5</span> Professionnels de Santé de Référence</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                         <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">
-                                <i class="fa-solid fa-user-doctor mr-1"></i> Médecin traitant
-                            </p>
+                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1"><i class="fa-solid fa-user-doctor mr-1"></i> Médecin traitant</p>
                             <textarea id="liaisonGp" rows="2" placeholder="Nom, Cabinet, Téléphone" class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded resize-none"></textarea>
                         </div>
                         <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">
-                                <i class="fa-solid fa-prescription-bottle-medical mr-1"></i> Pharmacie habituelle
-                            </p>
+                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1"><i class="fa-solid fa-prescription-bottle-medical mr-1"></i> Pharmacie habituelle</p>
                             <textarea id="liaisonPharmacy" rows="2" placeholder="Nom, Adresse, Téléphone" class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded resize-none"></textarea>
                         </div>
                         <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">
-                                <i class="fa-solid fa-stethoscope mr-1"></i> Spécialistes principaux
-                            </p>
+                            <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1"><i class="fa-solid fa-stethoscope mr-1"></i> Spécialistes principaux</p>
                             <textarea id="liaisonSpecialists" rows="2" placeholder="Spécialité, Nom, Téléphone" class="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded resize-none"></textarea>
                         </div>
                     </div>
@@ -582,7 +424,6 @@
             </div>
         </div>
 
-        <!-- VIEW 5.6: FICHE D'URGENCE (auto-générée) -->
         <div id="view-urgency" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print-hide">
                 <div>
@@ -590,22 +431,15 @@
                     <p class="text-sm text-slate-500">Générée automatiquement depuis vos données. Imprimez-la et gardez-la sur vous.</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="switchView('liaison')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-sm transition flex items-center gap-2">
-                        <i class="fa-solid fa-arrow-left"></i> Modifier
-                    </button>
-                    <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2">
-                        <i class="fa-solid fa-print"></i> Imprimer / PDF
-                    </button>
+                    <button onclick="switchView('liaison')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-sm transition flex items-center gap-2"><i class="fa-solid fa-arrow-left"></i> Modifier</button>
+                    <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center gap-2"><i class="fa-solid fa-print"></i> Imprimer / PDF</button>
                 </div>
             </div>
 
             <div id="urgencySheetContainer" class="max-w-4xl mx-auto"></div>
-
-            <!-- Section QR Code -->
             <div id="urgencyQRContainer" class="max-w-md mx-auto"></div>
         </div>
 
-        <!-- VIEW 6: SETTINGS -->
         <div id="view-settings" class="view-section hidden fade-in space-y-6">
             <div>
                 <h2 class="text-2xl font-black text-slate-900">Paramètres & Gestion des Données</h2>
@@ -613,13 +447,9 @@
             </div>
 
             <div class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 rounded-2xl p-6 text-white shadow-xl space-y-4 relative overflow-hidden">
-                <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl font-black">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </div>
+                <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl font-black"><i class="fa-solid fa-shield-halved"></i></div>
                 <div class="flex items-center gap-3">
-                    <span class="p-3 bg-indigo-500/20 border border-indigo-400/30 rounded-xl text-indigo-300 text-xl">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </span>
+                    <span class="p-3 bg-indigo-500/20 border border-indigo-400/30 rounded-xl text-indigo-300 text-xl"><i class="fa-solid fa-clock-rotate-left"></i></span>
                     <div>
                         <h3 class="font-bold text-lg">Sauvegarde Automatique Journalière</h3>
                         <p class="text-xs text-indigo-200">Un instantané complet de vos données est conservé chaque jour (7 jours glissants).</p>
@@ -628,71 +458,46 @@
                 <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border border-white/10">
                     <div>
                         <p class="text-xs text-indigo-200 font-medium">Statut du système</p>
-                        <p class="text-sm font-bold text-emerald-400 flex items-center gap-2" id="settingsBackupBadge">
-                            <i class="fa-solid fa-circle-check"></i> Vérification...
-                        </p>
+                        <p class="text-sm font-bold text-emerald-400 flex items-center gap-2" id="settingsBackupBadge"><i class="fa-solid fa-circle-check"></i> Vérification...</p>
                     </div>
-                    <button onclick="triggerAutoBackupNow()" class="text-xs bg-white text-slate-900 font-bold px-3.5 py-2 rounded-lg hover:bg-indigo-50 transition">
-                        Forcer la sauvegarde
-                    </button>
+                    <button onclick="triggerAutoBackupNow()" class="text-xs bg-white text-slate-900 font-bold px-3.5 py-2 rounded-lg hover:bg-indigo-50 transition">Forcer la sauvegarde</button>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between space-y-4">
                     <div class="space-y-2">
-                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl font-bold">
-                            <i class="fa-solid fa-file-export"></i>
-                        </div>
+                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-file-export"></i></div>
                         <h3 class="font-bold text-slate-800 text-base">Exporter les Données</h3>
-                        <p class="text-xs text-slate-500 leading-relaxed">
-                            Téléchargez un fichier JSON horodaté contenant l'intégralité des profils, mesures, vaccins, rendez-vous et documents.
-                        </p>
+                        <p class="text-xs text-slate-500 leading-relaxed">Téléchargez un fichier JSON horodaté contenant l'intégralité des profils, mesures, vaccins, rendez-vous et documents.</p>
                     </div>
-                    <button onclick="exportDataJSON()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-download"></i> Exporter la sauvegarde JSON
-                    </button>
+                    <button onclick="exportDataJSON()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> Exporter la sauvegarde JSON</button>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between space-y-4">
                     <div class="space-y-2">
-                        <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl font-bold">
-                            <i class="fa-solid fa-file-import"></i>
-                        </div>
+                        <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl font-bold"><i class="fa-solid fa-file-import"></i></div>
                         <h3 class="font-bold text-slate-800 text-base">Importer / Restaurer</h3>
-                        <p class="text-xs text-slate-500 leading-relaxed">
-                            Sélectionnez un fichier JSON de sauvegarde précédemment exporté pour restaurer vos données. Cette action remplacera les données actuelles.
-                        </p>
+                        <p class="text-xs text-slate-500 leading-relaxed">Sélectionnez un fichier JSON de sauvegarde précédemment exporté pour restaurer vos données. Cette action remplacera les données actuelles.</p>
                     </div>
                     <div>
                         <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="handleFileImport(event)">
-                        <button onclick="document.getElementById('importFileInput').click()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-upload"></i> Sélectionner un fichier JSON
-                        </button>
+                        <button onclick="document.getElementById('importFileInput').click()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2"><i class="fa-solid fa-upload"></i> Sélectionner un fichier JSON</button>
                     </div>
                 </div>
             </div>
 
             <div class="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div class="space-y-1">
-                    <h3 class="font-bold text-rose-900 text-base flex items-center gap-2">
-                        <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Zone de Danger : Réinitialisation
-                    </h3>
-                    <p class="text-xs text-rose-700">
-                        Efface intégralement le stockage local (<code>localStorage</code>) et remet l'application à zéro.
-                    </p>
+                    <h3 class="font-bold text-rose-900 text-base flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Zone de Danger : Réinitialisation</h3>
+                    <p class="text-xs text-rose-700">Efface intégralement le stockage local (<code>localStorage</code>) et remet l'application à zéro.</p>
                 </div>
-                <button onclick="openModal('resetConfirmModal')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-md shadow-rose-200 shrink-0">
-                    <i class="fa-solid fa-trash-can mr-1.5"></i> Tout Effacer
-                </button>
+                <button onclick="openModal('resetConfirmModal')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-md shadow-rose-200 shrink-0"><i class="fa-solid fa-trash-can mr-1.5"></i> Tout Effacer</button>
             </div>
         </div>
 
     </main>
 
-    <!-- MODALS -->
-
-    <!-- Add/Edit Profile -->
     <div id="addProfileModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -701,49 +506,14 @@
             </div>
             <form onsubmit="handleSaveProfile(event)" class="p-6 space-y-4">
                 <input type="hidden" id="profId" value="">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Prénom & Nom</label>
-                    <input type="text" id="profName" required placeholder="Ex: Léo Dupont" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Prénom & Nom</label><input type="text" id="profName" required placeholder="Ex: Léo Dupont" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date de naissance</label><input type="date" id="profDob" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Sexe</label><select id="profGender" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"><option value="M">Garçon / Homme</option><option value="F">Fille / Femme</option></select></div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date de naissance</label>
-                        <input type="date" id="profDob" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Sexe</label>
-                        <select id="profGender" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                            <option value="M">Garçon / Homme</option>
-                            <option value="F">Fille / Femme</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Avatar / Émoji</label>
-                        <select id="profAvatar" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                            <option value="👶">👶 Bébé</option>
-                            <option value="🧒">🧒 Enfant</option>
-                            <option value="👧">👧 Fille</option>
-                            <option value="👦">👦 Garçon</option>
-                            <option value="👩">👩 Femme / Adulte</option>
-                            <option value="👨">👨 Homme / Adulte</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Groupe sanguin</label>
-                        <select id="profBloodType" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                            <option value="">— Non renseigné —</option>
-                            <option value="A+">A+</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B-">B-</option>
-                            <option value="AB+">AB+</option>
-                            <option value="AB-">AB-</option>
-                            <option value="O+">O+</option>
-                            <option value="O-">O-</option>
-                        </select>
-                    </div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Avatar / Émoji</label><select id="profAvatar" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"><option value="👶">👶 Bébé</option><option value="🧒">🧒 Enfant</option><option value="👧">👧 Fille</option><option value="👦">👦 Garçon</option><option value="👩">👩 Femme / Adulte</option><option value="👨">👨 Homme / Adulte</option></select></div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Groupe sanguin</label><select id="profBloodType" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"><option value="">— Non renseigné —</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select></div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Notes Médicales</label>
@@ -758,7 +528,6 @@
         </div>
     </div>
 
-    <!-- Add Growth -->
     <div id="addGrowthModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden fade-in">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -766,22 +535,10 @@
                 <button onclick="closeModal('addGrowthModal')" aria-label="Fermer" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onsubmit="handleAddGrowth(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date du relevé</label>
-                    <input type="date" id="growthDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Poids (kg)</label>
-                    <input type="number" step="0.05" min="0" max="300" id="growthWeight" placeholder="Ex: 12.4" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Taille (cm)</label>
-                    <input type="number" step="0.5" min="0" max="250" id="growthHeight" placeholder="Ex: 88" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Périmètre Crânien (cm)</label>
-                    <input type="number" step="0.5" min="0" max="100" id="growthHeadCirc" placeholder="Ex: 46.5" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date du relevé</label><input type="date" id="growthDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Poids (kg)</label><input type="number" step="0.05" min="0" max="300" id="growthWeight" placeholder="Ex: 12.4" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Taille (cm)</label><input type="number" step="0.5" min="0" max="250" id="growthHeight" placeholder="Ex: 88" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Périmètre Crânien (cm)</label><input type="number" step="0.5" min="0" max="100" id="growthHeadCirc" placeholder="Ex: 46.5" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <p class="text-[11px] text-slate-400 italic">Saisissez au moins une mesure.</p>
                 <div class="pt-2 flex justify-end gap-2">
                     <button type="button" onclick="closeModal('addGrowthModal')" class="px-4 py-2 text-slate-600 text-xs font-bold hover:bg-slate-100 rounded-xl">Annuler</button>
@@ -791,7 +548,6 @@
         </div>
     </div>
 
-    <!-- Add Document -->
     <div id="addDocumentModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -805,29 +561,12 @@
                     <p class="text-xs font-bold text-indigo-900">Cliquez pour simuler le scanner OCR</p>
                     <p class="text-[11px] text-slate-500">ou sélectionnez un fichier PDF/Image</p>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Titre du document</label>
-                    <input type="text" id="docTitle" required placeholder="Ex: Ordonnance Pédiatre Nov 2026" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Titre du document</label><input type="text" id="docTitle" required placeholder="Ex: Ordonnance Pédiatre Nov 2026" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label>
-                        <input type="date" id="docDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catégorie</label>
-                        <select id="docCategory" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                            <option value="Ordonnance">Ordonnance</option>
-                            <option value="Imagerie">Imagerie / Radio</option>
-                            <option value="Analyse">Analyse Sanguine</option>
-                            <option value="CR Medical">Compte Rendu</option>
-                        </select>
-                    </div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label><input type="date" id="docDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catégorie</label><select id="docCategory" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"><option value="Ordonnance">Ordonnance</option><option value="Imagerie">Imagerie / Radio</option><option value="Analyse">Analyse Sanguine</option><option value="CR Medical">Compte Rendu</option></select></div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mots-clés / Tags</label>
-                    <input type="text" id="docTags" placeholder="Ex: Traitement, Grippe, Radio" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mots-clés / Tags</label><input type="text" id="docTags" placeholder="Ex: Traitement, Grippe, Radio" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="pt-2 flex justify-end gap-2">
                     <button type="button" onclick="closeModal('addDocumentModal')" class="px-4 py-2 text-slate-600 text-xs font-bold hover:bg-slate-100 rounded-xl">Annuler</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-200">Sauvegarder</button>
@@ -836,7 +575,6 @@
         </div>
     </div>
 
-    <!-- Add Appointment -->
     <div id="addAppointmentModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -844,28 +582,13 @@
                 <button onclick="closeModal('addAppointmentModal')" aria-label="Fermer" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onsubmit="handleAddAppointment(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Praticien / Spécialité</label>
-                    <input type="text" id="appDoctor" required placeholder="Ex: Dr. Martin - Pédiatre" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Praticien / Spécialité</label><input type="text" id="appDoctor" required placeholder="Ex: Dr. Martin - Pédiatre" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label>
-                        <input type="date" id="appDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Heure</label>
-                        <input type="time" id="appTime" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label><input type="date" id="appDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Heure</label><input type="time" id="appTime" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Lieu / Clinique</label>
-                    <input type="text" id="appLocation" placeholder="Ex: Cabinet Médical Pasteur" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Notes / Motif</label>
-                    <input type="text" id="appNotes" placeholder="Ex: Visite de contrôle 5 ans" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Lieu / Clinique</label><input type="text" id="appLocation" placeholder="Ex: Cabinet Médical Pasteur" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Notes / Motif</label><input type="text" id="appNotes" placeholder="Ex: Visite de contrôle 5 ans" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="pt-2 flex justify-end gap-2">
                     <button type="button" onclick="closeModal('addAppointmentModal')" class="px-4 py-2 text-slate-600 text-xs font-bold hover:bg-slate-100 rounded-xl">Annuler</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-200">Programmer</button>
@@ -874,7 +597,6 @@
         </div>
     </div>
 
-    <!-- Add Vaccine -->
     <div id="addVaccineModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden fade-in">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -882,25 +604,10 @@
                 <button onclick="closeModal('addVaccineModal')" aria-label="Fermer" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onsubmit="handleAddVaccine(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nom du Vaccin</label>
-                    <input type="text" id="vacName" required placeholder="Ex: ROR" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label>
-                    <input type="date" id="vacTargetDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Statut</label>
-                    <select id="vacStatus" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                        <option value="done">Effectué</option>
-                        <option value="todo">À faire</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">N° de Lot (Optionnel)</label>
-                    <input type="text" id="vacLot" placeholder="Ex: LOT-B9821" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nom du Vaccin</label><input type="text" id="vacName" required placeholder="Ex: ROR" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date</label><input type="date" id="vacTargetDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Statut</label><select id="vacStatus" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"><option value="done">Effectué</option><option value="todo">À faire</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">N° de Lot (Optionnel)</label><input type="text" id="vacLot" placeholder="Ex: LOT-B9821" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="pt-2 flex justify-end gap-2">
                     <button type="button" onclick="closeModal('addVaccineModal')" class="px-4 py-2 text-slate-600 text-xs font-bold hover:bg-slate-100 rounded-xl">Annuler</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-200">Enregistrer</button>
@@ -909,7 +616,6 @@
         </div>
     </div>
 
-    <!-- Add Milestone -->
     <div id="addMilestoneModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden fade-in">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -917,22 +623,9 @@
                 <button onclick="closeModal('addMilestoneModal')" aria-label="Fermer" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onsubmit="handleAddMilestone(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Intitulé du Jalon</label>
-                    <input type="text" id="mileTitle" required placeholder="Ex: Faire du vélo sans roues" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catégorie</label>
-                    <select id="mileCategory" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                        <option value="Motricité">Motricité</option>
-                        <option value="Langage">Langage & Éveil</option>
-                        <option value="Social">Sociabilité & Autonomie</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date d'accomplissement</label>
-                    <input type="date" id="mileDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Intitulé du Jalon</label><input type="text" id="mileTitle" required placeholder="Ex: Faire du vélo sans roues" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catégorie</label><select id="mileCategory" class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"><option value="Motricité">Motricité</option><option value="Langage">Langage & Éveil</option><option value="Social">Sociabilité & Autonomie</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1">Date d'accomplissement</label><input type="date" id="mileDate" required class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></div>
                 <div class="pt-2 flex justify-end gap-2">
                     <button type="button" onclick="closeModal('addMilestoneModal')" class="px-4 py-2 text-slate-600 text-xs font-bold hover:bg-slate-100 rounded-xl">Annuler</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-200">Enregistrer</button>
@@ -941,18 +634,13 @@
         </div>
     </div>
 
-    <!-- Reset Confirm -->
     <div id="resetConfirmModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in border border-rose-100">
             <div class="p-6 text-center space-y-4">
-                <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-2xl mx-auto">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                </div>
+                <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-2xl mx-auto"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <div>
                     <h3 class="text-lg font-black text-slate-900">Confirmer la réinitialisation</h3>
-                    <p class="text-xs text-slate-500 mt-1">
-                        Êtes-vous absolument sûr ? Toutes les données de tous les profils seront définitivement supprimées.
-                    </p>
+                    <p class="text-xs text-slate-500 mt-1">Êtes-vous absolument sûr ? Toutes les données de tous les profils seront définitivement supprimées.</p>
                 </div>
                 <div class="flex gap-3 pt-2">
                     <button onclick="closeModal('resetConfirmModal')" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">Annuler</button>
@@ -1036,7 +724,6 @@
                 .replace(/'/g, '&#39;');
         }
 
-        // Conversion Uint8Array <-> Base64 robuste (évite stack overflow)
         function uint8ToBase64(bytes) {
             let binary = '';
             const CHUNK = 0x8000;
@@ -1093,7 +780,6 @@
         function checkDailyAutoBackup() {
             const todayStr = new Date().toISOString().split('T')[0];
             const lastStr = appState.lastAutoBackup ? appState.lastAutoBackup.split('T')[0] : null;
-
             if (lastStr !== todayStr) {
                 createSnapshot();
                 appState.lastAutoBackup = new Date().toISOString();
@@ -1335,9 +1021,7 @@
                     <td class="p-4 font-bold text-slate-800">${r.weight ? r.weight + ' kg' : '--'}</td>
                     <td class="p-4 font-bold text-slate-800">${r.height ? r.height + ' cm' : '--'}</td>
                     <td class="p-4 font-bold text-slate-800">${r.headCirc ? r.headCirc + ' cm' : '--'}</td>
-                    <td class="p-4 text-right">
-                        <button onclick="deleteGrowthRecord('${r.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button>
-                    </td>
+                    <td class="p-4 text-right"><button onclick="deleteGrowthRecord('${r.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>
             `).join('');
         }
@@ -1431,9 +1115,7 @@
                             <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold">
                                 <i class="fa-solid ${d.category==='Imagerie'?'fa-file-image':(d.category==='Ordonnance'?'fa-file-prescription':'fa-file-medical')}"></i>
                             </div>
-                            <button onclick="deleteDocument('${d.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 transition opacity-0 group-hover:opacity-100 p-1">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
+                            <button onclick="deleteDocument('${d.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 transition opacity-0 group-hover:opacity-100 p-1"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                         <h4 class="font-bold text-slate-800 text-sm mb-1 line-clamp-1" title="${esc(d.title)}">${esc(d.title)}</h4>
                         <p class="text-[11px] text-slate-400 mb-2">${formatDateFR(d.date)} • ${esc(d.category)}</p>
@@ -1477,9 +1159,7 @@
                             <span class="text-[10px] uppercase leading-none opacity-80">${new Date(a.date).toLocaleDateString('fr-FR', {month:'short'})}</span>
                             <span class="text-base leading-none mt-0.5">${new Date(a.date).getDate()}</span>
                         </div>
-                        <button onclick="deleteAppointment('${a.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 opacity-0 group-hover:opacity-100 transition">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                        <button onclick="deleteAppointment('${a.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-800 text-sm">${esc(a.doctor)}</h4>
@@ -1500,17 +1180,13 @@
                 vacList.innerHTML = recs.vaccines.map(v => `
                     <div class="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
-                            <button onclick="toggleVaccineStatus('${v.id}')" aria-label="Changer statut" class="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition ${v.status==='done'?'bg-emerald-500 text-white':'bg-slate-200 text-slate-400 hover:bg-slate-300'}">
-                                <i class="fa-solid fa-check"></i>
-                            </button>
+                            <button onclick="toggleVaccineStatus('${v.id}')" aria-label="Changer statut" class="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition ${v.status==='done'?'bg-emerald-500 text-white':'bg-slate-200 text-slate-400 hover:bg-slate-300'}"><i class="fa-solid fa-check"></i></button>
                             <div>
                                 <p class="text-xs font-bold text-slate-800">${esc(v.name)}</p>
                                 <p class="text-[11px] text-slate-500">Prévu le : ${formatDateFR(v.targetDate)} ${v.lot ? '• Lot: ' + esc(v.lot) : ''}</p>
                             </div>
                         </div>
-                        <span class="text-[10px] font-bold px-2 py-1 rounded-md ${v.status==='done'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">
-                            ${v.status==='done'?'Fait':'À faire'}
-                        </span>
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-md ${v.status==='done'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${v.status==='done'?'Fait':'À faire'}</span>
                     </div>
                 `).join('');
             }
@@ -1522,17 +1198,13 @@
                 mileList.innerHTML = recs.milestones.map(m => `
                     <div class="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
-                            <button onclick="toggleMilestoneStatus('${m.id}')" aria-label="Changer statut" class="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition ${m.done?'bg-indigo-600 text-white':'bg-slate-200 text-slate-400 hover:bg-slate-300'}">
-                                <i class="fa-solid fa-star"></i>
-                            </button>
+                            <button onclick="toggleMilestoneStatus('${m.id}')" aria-label="Changer statut" class="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition ${m.done?'bg-indigo-600 text-white':'bg-slate-200 text-slate-400 hover:bg-slate-300'}"><i class="fa-solid fa-star"></i></button>
                             <div>
                                 <p class="text-xs font-bold text-slate-800">${esc(m.title)}</p>
                                 <p class="text-[11px] text-slate-500">${esc(m.category)} • ${formatDateFR(m.date)}</p>
                             </div>
                         </div>
-                        <span class="text-[10px] font-bold px-2 py-1 rounded-md ${m.done?'bg-indigo-100 text-indigo-700':'bg-slate-200 text-slate-600'}">
-                            ${m.done?'Acquis':'En cours'}
-                        </span>
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-md ${m.done?'bg-indigo-100 text-indigo-700':'bg-slate-200 text-slate-600'}">${m.done?'Acquis':'En cours'}</span>
                     </div>
                 `).join('');
             }
@@ -1586,32 +1258,17 @@
         function renderMedicationsRows(medications) {
             const tbody = document.getElementById('liaisonMedicationsBody');
             if (!tbody) return;
-
             if (!medications || medications.length === 0) {
                 medications = [{ name: '', dosage: '', indication: '' }];
                 const data = getLiaisonData();
                 data.medications = medications;
             }
-
             tbody.innerHTML = medications.map((m, idx) => `
                 <tr class="hover:bg-slate-50">
-                    <td class="p-1.5">
-                        <input type="text" value="${esc(m.name)}" placeholder="Nom exact" data-field="name" data-idx="${idx}" 
-                               class="med-input w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded border-b border-transparent focus:border-indigo-300">
-                    </td>
-                    <td class="p-1.5">
-                        <input type="text" value="${esc(m.dosage)}" placeholder="Ex: 500mg, 2x/jour" data-field="dosage" data-idx="${idx}"
-                               class="med-input w-full bg-transparent text-sm text-slate-700 outline-none focus:bg-white focus:px-1 rounded border-b border-transparent focus:border-indigo-300">
-                    </td>
-                    <td class="p-1.5">
-                        <input type="text" value="${esc(m.indication)}" placeholder="Ex: Douleur, tension" data-field="indication" data-idx="${idx}"
-                               class="med-input w-full bg-transparent text-sm text-slate-700 outline-none focus:bg-white focus:px-1 rounded border-b border-transparent focus:border-indigo-300">
-                    </td>
-                    <td class="p-1.5 text-right print-hide">
-                        <button onclick="removeMedicationRow(${idx})" class="text-slate-300 hover:text-rose-600 transition" aria-label="Supprimer la ligne">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </td>
+                    <td class="p-1.5"><input type="text" value="${esc(m.name)}" placeholder="Nom exact" data-field="name" data-idx="${idx}" class="med-input w-full bg-transparent text-sm font-semibold text-slate-800 outline-none focus:bg-white focus:px-1 rounded border-b border-transparent focus:border-indigo-300"></td>
+                    <td class="p-1.5"><input type="text" value="${esc(m.dosage)}" placeholder="Ex: 500mg, 2x/jour" data-field="dosage" data-idx="${idx}" class="med-input w-full bg-transparent text-sm text-slate-700 outline-none focus:bg-white focus:px-1 rounded border-b border-transparent focus:border-indigo-300"></td>
+                    <td class="p-1.5"><input type="text" value="${esc(m.indication)}" placeholder="Ex: Douleur, tension" data-field="indication" data-idx="${idx}" class="med-input w-full bg-transparent text-sm text-slate-700 outline-none focus:bg-white focus:px-1 rounded border-b border-transparent focus:border-indigo-300"></td>
+                    <td class="p-1.5 text-right print-hide"><button onclick="removeMedicationRow(${idx})" class="text-slate-300 hover:text-rose-600 transition" aria-label="Supprimer la ligne"><i class="fa-solid fa-xmark"></i></button></td>
                 </tr>
             `).join('');
 
@@ -1660,13 +1317,11 @@
             data.pharmacy = getVal('liaisonPharmacy');
             data.specialists = getVal('liaisonSpecialists');
             data.updatedAt = new Date().toISOString();
-
             saveState();
             renderLiaison();
             showToast('✅ Fiche de liaison enregistrée', 'success');
         }
 
-        // --- PROFILE EDIT ---
         function editCurrentProfile() {
             const profile = getCurrentProfile();
             if (!profile) return;
@@ -1682,7 +1337,6 @@
         }
 
         // ============ FICHE D'URGENCE - AUTO-REMPLISSAGE ============
-
         function extractBloodType(notes) {
             if (!notes) return '';
             const match = notes.match(/(?:groupe\s*:?\s*)?\b(A|B|AB|O)\s*([+-])(?=[\s,.;!?]|$)/i);
@@ -1715,10 +1369,8 @@
                 'drépanocytose', 'drepanocytose', 'thalassémie', 'thalassemie',
                 'hémophilie', 'hemophilie', 'mucoviscidose', 'dyslexie', 'dyspraxie'
             ];
-
             const lower = notes.toLowerCase();
             const found = [];
-
             commonConditions.forEach(condition => {
                 if (lower.includes(condition)) {
                     const parts = notes.split(/[,;]/);
@@ -1732,7 +1384,6 @@
                     });
                 }
             });
-
             return found.join(' • ');
         }
 
@@ -1745,10 +1396,8 @@
                 'lunettes', 'lentilles', 'appareil dentaire', 'appareil auditif',
                 'fauteuil roulant', 'béquille', 'attelle', 'gouttière', 'gouttiere'
             ];
-
             const lower = notes.toLowerCase();
             const found = [];
-
             devices.forEach(device => {
                 if (lower.includes(device)) {
                     const parts = notes.split(/[,;]/);
@@ -1760,26 +1409,21 @@
                     });
                 }
             });
-
             return found.join(' • ');
         }
 
         function inferDoctorsFromAppointments() {
             const recs = getCurrentRecords();
             const countByName = {};
-
             recs.appointments.forEach(a => {
                 const name = (a.doctor || '').trim();
                 if (!name) return;
                 countByName[name] = (countByName[name] || 0) + 1;
             });
-
             const sorted = Object.entries(countByName).sort((a, b) => b[1] - a[1]);
             if (sorted.length === 0) return { gp: '', specialists: '' };
-
             const gp = sorted[0][0];
             const specialists = sorted.slice(1).map(([name]) => name).join(' • ');
-
             return { gp, specialists };
         }
 
@@ -1787,7 +1431,6 @@
             const profile = getCurrentProfile();
             const liaison = getLiaisonData();
             const inferred = inferDoctorsFromAppointments();
-
             const autoBloodType = profile.bloodType || extractBloodType(profile.notes);
             const autoAllergies = extractAllergies(profile.notes);
             const autoChronic = extractChronic(profile.notes);
@@ -1824,18 +1467,14 @@
             const badge = (isAuto) => isAuto
                 ? '<span class="text-[9px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded ml-1">AUTO</span>'
                 : '';
-
             const noInfo = '<span class="text-slate-400 italic font-normal">Non renseigné</span>';
             const safe = (v) => v && v.trim() ? esc(v) : noInfo;
 
             return `
             <div class="bg-white rounded-2xl border-2 border-rose-300 shadow-lg p-8">
-
                 <div class="flex items-start justify-between border-b-4 border-rose-600 pb-4 mb-6">
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 bg-rose-600 text-white rounded-2xl flex items-center justify-center text-3xl font-black shadow-lg shadow-rose-200">
-                            <i class="fa-solid fa-kit-medical"></i>
-                        </div>
+                        <div class="w-16 h-16 bg-rose-600 text-white rounded-2xl flex items-center justify-center text-3xl font-black shadow-lg shadow-rose-200"><i class="fa-solid fa-kit-medical"></i></div>
                         <div>
                             <h1 class="text-2xl font-black text-rose-700 leading-tight">FICHE D'URGENCE MÉDICALE</h1>
                             <p class="text-xs text-slate-500 font-medium mt-0.5">Document confidentiel — À présenter aux secours</p>
@@ -1872,21 +1511,15 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                     <div class="bg-red-50 border-l-4 border-red-600 rounded-lg p-3">
-                        <p class="text-[10px] uppercase tracking-wider text-red-700 font-black mb-1">
-                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> ALLERGIES
-                        </p>
+                        <p class="text-[10px] uppercase tracking-wider text-red-700 font-black mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ALLERGIES</p>
                         <p class="text-sm font-bold text-red-900">${data.allergies ? esc(data.allergies) : 'Aucune connue'}${badge(data._autoFields.allergies)}</p>
                     </div>
                     <div class="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-3">
-                        <p class="text-[10px] uppercase tracking-wider text-amber-700 font-black mb-1">
-                            <i class="fa-solid fa-heart-crack mr-1"></i> PATHOLOGIES
-                        </p>
+                        <p class="text-[10px] uppercase tracking-wider text-amber-700 font-black mb-1"><i class="fa-solid fa-heart-crack mr-1"></i> PATHOLOGIES</p>
                         <p class="text-sm font-semibold text-amber-900">${data.chronic ? esc(data.chronic) : noInfo}${badge(data._autoFields.chronic)}</p>
                     </div>
                     <div class="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-3">
-                        <p class="text-[10px] uppercase tracking-wider text-blue-700 font-black mb-1">
-                            <i class="fa-solid fa-microchip mr-1"></i> DISPOSITIFS
-                        </p>
+                        <p class="text-[10px] uppercase tracking-wider text-blue-700 font-black mb-1"><i class="fa-solid fa-microchip mr-1"></i> DISPOSITIFS</p>
                         <p class="text-sm font-semibold text-blue-900">${data.devices ? esc(data.devices) : noInfo}${badge(data._autoFields.devices)}</p>
                     </div>
                 </div>
@@ -1965,10 +1598,7 @@
             const container = document.getElementById('urgencySheetContainer');
             if (container) container.innerHTML = html;
             switchView('urgency');
-
-            // Générer le QR après un délai pour laisser le DOM se mettre à jour
             setTimeout(renderUrgencyQRCode, 150);
-
             const autoCount = Object.values(data._autoFields).filter(Boolean).length;
             if (autoCount > 0) {
                 showToast(`🆘 Fiche générée — ${autoCount} champ(s) auto-rempli(s)`, 'success');
@@ -1978,7 +1608,7 @@
         }
 
         // ============ QR CODE D'URGENCE ============
-        const QR_URL_LIMIT = 2900; // limite pratique pour un QR en correction 'L'
+        const QR_URL_LIMIT = 2900;
 
         async function deriveKeyFromPassword(password, salt) {
             const enc = new TextEncoder();
@@ -1997,13 +1627,12 @@
             const container = document.getElementById('urgencyQRContainer');
             if (!container) return;
 
-            // Sécurité : crypto.subtle disponible seulement en HTTPS / localhost
             if (!window.crypto?.subtle) {
                 container.innerHTML = `
                     <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
                         <i class="fa-solid fa-triangle-exclamation text-amber-600 text-2xl mb-2"></i>
                         <p class="text-sm font-bold text-amber-900">QR code indisponible</p>
-                        <p class="text-xs text-amber-700 mt-1">Le chiffrement nécessite HTTPS. Hébergez l'application en ligne pour activer cette fonctionnalité.</p>
+                        <p class="text-xs text-amber-700 mt-1">Le chiffrement nécessite HTTPS.</p>
                     </div>`;
                 return;
             }
@@ -2029,32 +1658,23 @@
                 </div>
             `;
 
-            // Récupérer le mot de passe s'il existe (déjà saisi précédemment)
             const pwdInput = document.getElementById('qrPassword');
             const password = pwdInput?.value || '';
 
             try {
-                // 1. Payload compact (clés courtes pour minimiser la taille)
                 const compact = {
-                    n: data.name,
-                    d: data.dob,
-                    b: data.bloodType || '',
-                    a: data.allergies || '',
-                    c: data.chronic || '',
-                    dv: data.devices || '',
-                    e: data.emergency || '',
+                    n: data.name, d: data.dob, b: data.bloodType || '',
+                    a: data.allergies || '', c: data.chronic || '',
+                    dv: data.devices || '', e: data.emergency || '',
                     m: (data.medications || []).filter(x => x.name?.trim())
                         .map(x => [x.name, x.dosage || '', x.indication || '']),
-                    gp: data.gp || '',
-                    ph: data.pharmacy || '',
-                    sp: data.specialists || '',
+                    gp: data.gp || '', ph: data.pharmacy || '', sp: data.specialists || '',
                     t: new Date().toISOString().slice(0, 10)
                 };
 
                 let jsonStr = JSON.stringify(compact);
                 let isEncrypted = false;
 
-                // 2. Chiffrement optionnel
                 if (password && password.length >= 4) {
                     const key = await deriveKeyFromPassword(password, 'santepro-qr-v1');
                     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -2068,17 +1688,13 @@
                     isEncrypted = true;
                 }
 
-                // 3. Compression LZ
                 const compressed = LZString.compressToEncodedURIComponent(jsonStr);
-
-                // 4. Construction de l'URL avec fragment
                 const baseUrl = location.origin === 'null' 
-                    ? location.href.split('#')[0]   // cas file://
+                    ? location.href.split('#')[0]
                     : location.origin + location.pathname;
                 const qrUrl = `${baseUrl}#q=${compressed}&e=${isEncrypted ? 1 : 0}`;
                 const urlLength = qrUrl.length;
 
-                // 5. Vérification de taille
                 if (urlLength > QR_URL_LIMIT) {
                     document.getElementById('qrStatusText').innerHTML = 
                         `<span class="text-rose-600 font-bold">❌ Payload trop volumineux : ${urlLength} / ${QR_URL_LIMIT} caractères</span>`;
@@ -2086,19 +1702,29 @@
                         <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 text-center text-xs">
                             <p class="font-bold text-rose-900 mb-2">Impossible de générer le QR</p>
                             <p class="text-rose-700">Réduisez les champs : traitements, allergies, spécialistes.</p>
-                            <p class="text-rose-600 mt-2 font-mono text-[10px]">Taille actuelle : ${urlLength} caractères (limite ~${QR_URL_LIMIT})</p>
-                        </div>
-                    `;
+                        </div>`;
                     return;
                 }
 
-                // 6. Génération du QR
-                const qrDataUrl = await QRCode.toDataURL(qrUrl, {
-                    errorCorrectionLevel: 'L',
-                    margin: 1,
+                // === Génération avec qrcodejs ===
+                const tempDiv = document.createElement('div');
+                new QRCode(tempDiv, {
+                    text: qrUrl,
                     width: 500,
-                    color: { dark: '#0f172a', light: '#ffffff' }
+                    height: 500,
+                    colorDark: '#0f172a',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
                 });
+
+                // Attendre que le canvas/img soit dessiné
+                await new Promise(r => setTimeout(r, 100));
+
+                const canvasEl = tempDiv.querySelector('canvas');
+                const imgEl = tempDiv.querySelector('img');
+                const qrDataUrl = canvasEl ? canvasEl.toDataURL('image/png') : (imgEl ? imgEl.src : '');
+
+                if (!qrDataUrl) throw new Error('QR code non généré');
 
                 const sizeKB = (urlLength / 1024).toFixed(2);
                 document.getElementById('qrStatusText').innerHTML = isEncrypted
@@ -2128,21 +1754,16 @@
             }
         }
 
-        // Vérifie si l'URL contient un QR à charger au démarrage
         async function checkQRCodeInURL() {
             const hash = location.hash;
             if (!hash.startsWith('#q=')) return;
-
             const params = new URLSearchParams(hash.slice(1));
             const compressed = params.get('q');
             const isEncrypted = params.get('e') === '1';
-
             if (!compressed) return;
-
             try {
                 const jsonStr = LZString.decompressFromEncodedURIComponent(compressed);
                 if (!jsonStr) throw new Error('Décompression échouée');
-
                 let payload;
                 if (isEncrypted) {
                     const pwd = prompt('🔒 Fiche d\'urgence chiffrée. Entrez le mot de passe :');
@@ -2156,8 +1777,6 @@
                 } else {
                     payload = JSON.parse(jsonStr);
                 }
-
-                // Affichage direct de la fiche
                 displayQRPayload(payload);
             } catch (err) {
                 console.error('[QR decode]', err);
@@ -2166,7 +1785,6 @@
         }
 
         function displayQRPayload(payload) {
-            // Adapte les clés courtes vers la structure complète pour réutiliser le template
             const fullData = {
                 name: payload.n, dob: payload.d, age: calculateAgeStr(payload.d),
                 gender: '—',
@@ -2178,15 +1796,11 @@
                 updatedAt: payload.t,
                 _autoFields: {}
             };
-
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             const target = document.getElementById('view-urgency');
             if (target) target.classList.remove('hidden');
-
-            // Masquer tout le reste (menu, header, boutons) : mode "vue dédiée" QR
             const main = document.getElementById('mainContentArea');
             if (main) {
-                // Injecter un bandeau de retour
                 const header = document.createElement('div');
                 header.className = 'max-w-4xl mx-auto mb-4 bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-center justify-between';
                 header.innerHTML = `
@@ -2199,10 +1813,8 @@
                         <i class="fa-solid fa-arrow-left mr-1"></i> Retour à l'app
                     </button>
                 `;
-                
                 target.innerHTML = '';
                 target.appendChild(header);
-                
                 const sheet = document.createElement('div');
                 sheet.id = 'urgencySheetContainer';
                 sheet.className = 'max-w-4xl mx-auto';
@@ -2221,12 +1833,10 @@
             const avatar = document.getElementById('profAvatar').value;
             const bloodType = document.getElementById('profBloodType').value;
             const notes = document.getElementById('profNotes').value.trim();
-
             if (new Date(dob) > new Date()) {
                 showToast('La date de naissance ne peut pas être dans le futur.', 'error');
                 return;
             }
-
             if (id) {
                 const profile = appState.profiles.find(p => p.id === id);
                 if (profile) {
@@ -2251,10 +1861,7 @@
             const w = parseFloat(document.getElementById('growthWeight').value);
             const h = parseFloat(document.getElementById('growthHeight').value);
             const hc = parseFloat(document.getElementById('growthHeadCirc').value);
-            if (!w && !h && !hc) {
-                showToast('Saisissez au moins une mesure.', 'error');
-                return;
-            }
+            if (!w && !h && !hc) { showToast('Saisissez au moins une mesure.', 'error'); return; }
             const recs = getCurrentRecords();
             recs.growth.push({
                 id: 'g_' + Date.now(),
@@ -2262,8 +1869,7 @@
                 weight: w || null, height: h || null, headCirc: hc || null
             });
             saveState(); closeModal('addGrowthModal'); e.target.reset();
-            renderAll();
-            showToast('Mesure enregistrée !', 'success');
+            renderAll(); showToast('Mesure enregistrée !', 'success');
         }
 
         function handleAddDocument(e) {
@@ -2278,8 +1884,7 @@
                 fileType: 'PDF'
             });
             saveState(); closeModal('addDocumentModal'); e.target.reset();
-            renderDocuments(); renderDashboard();
-            showToast('Document enregistré !', 'success');
+            renderDocuments(); renderDashboard(); showToast('Document enregistré !', 'success');
         }
 
         function handleAddAppointment(e) {
@@ -2294,8 +1899,7 @@
                 notes: document.getElementById('appNotes').value.trim()
             });
             saveState(); closeModal('addAppointmentModal'); e.target.reset();
-            renderAll();
-            showToast('Rendez-vous planifié !', 'success');
+            renderAll(); showToast('Rendez-vous planifié !', 'success');
         }
 
         function handleAddVaccine(e) {
@@ -2309,8 +1913,7 @@
                 lot: document.getElementById('vacLot').value.trim()
             });
             saveState(); closeModal('addVaccineModal'); e.target.reset();
-            renderVaccinesAndMilestones(); renderDashboard();
-            showToast('Vaccin ajouté !', 'success');
+            renderVaccinesAndMilestones(); renderDashboard(); showToast('Vaccin ajouté !', 'success');
         }
 
         function handleAddMilestone(e) {
@@ -2324,11 +1927,9 @@
                 done: true
             });
             saveState(); closeModal('addMilestoneModal'); e.target.reset();
-            renderVaccinesAndMilestones();
-            showToast('Jalon enregistré !', 'success');
+            renderVaccinesAndMilestones(); showToast('Jalon enregistré !', 'success');
         }
 
-        // --- DELETIONS ---
         function deleteGrowthRecord(id) {
             if (!confirm('Supprimer cette mesure ?')) return;
             const recs = getCurrentRecords();
@@ -2358,7 +1959,6 @@
             if (m) { m.done = !m.done; saveState(); renderVaccinesAndMilestones(); }
         }
 
-        // --- EXPORT / IMPORT / RESET ---
         function exportDataJSON() {
             const todayStr = new Date().toISOString().split('T')[0];
             const filename = `carnet_sante_sauvegarde_${todayStr}.json`;
@@ -2412,10 +2012,7 @@
         // --- BOOTSTRAP ---
         window.addEventListener('DOMContentLoaded', async function() {
             if (!supportsHas) document.body.classList.add('no-has');
-
-            // Vérifie d'abord si un QR est présent dans l'URL
             await checkQRCodeInURL();
-
             loadState();
             checkDailyAutoBackup();
 
