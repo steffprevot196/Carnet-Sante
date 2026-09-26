@@ -182,21 +182,54 @@
 
         <div id="view-dashboard" class="view-section fade-in space-y-6">
         
-            <!-- Bandeau connexion Google (auto-masqué si connecté) -->
-            <div id="dashboardGoogleBanner" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-white border border-blue-200 flex items-center justify-center text-blue-600 text-lg shrink-0">
-                        <i class="fa-brands fa-google"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-blue-900">Connectez Google pour activer la sauvegarde cloud et l'agenda</p>
-                        <p class="text-xs text-blue-700 mt-0.5" id="dashboardGoogleHint">Un clic suffit. La session reste active ~1 heure.</p>
+
+            <!-- Panneau synchronisation PC ↔ Mobile -->
+            <div id="syncPanel" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-white border border-blue-200 flex items-center justify-center text-blue-600 text-lg shrink-0">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-blue-900">Synchronisation PC ↔ Mobile</p>
+                            <p class="text-xs text-blue-700 mt-0.5" id="syncStatusText">Chargement...</p>
+                        </div>
                     </div>
                 </div>
-                <button onclick="connectGoogleDrive()" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md shadow-blue-200 flex items-center gap-2">
-                    <i class="fa-brands fa-google"></i> Autoriser Google
-                </button>
+
+                <div id="syncDates" class="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-blue-100 mb-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-mobile-screen text-blue-600"></i>
+                            <span class="text-blue-700 font-semibold">Local :</span>
+                            <span id="syncLocalDate" class="text-slate-700 font-bold">--</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-cloud text-blue-600"></i>
+                            <span class="text-blue-700 font-semibold">Drive :</span>
+                            <span id="syncDriveDate" class="text-slate-700 font-bold">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="syncHint" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 mb-3 flex items-start gap-2">
+                    <i class="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
+                    <span id="syncHintText"></span>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="manualLoadFromDrive()" id="syncLoadBtn" class="flex-1 sm:flex-initial bg-white hover:bg-blue-50 border border-blue-300 text-blue-700 font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Charger depuis Drive
+                    </button>
+                    <button onclick="manualUploadToDrive()" id="syncUploadBtn" class="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition shadow-md shadow-blue-200 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Envoyer vers Drive
+                    </button>
+                    <button onclick="connectGoogleDrive()" id="syncAuthBtn" class="hidden flex-1 sm:flex-initial bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                        <i class="fa-brands fa-google"></i> Autoriser Google
+                    </button>
+                </div>
             </div>
+
 
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
                 <div class="flex items-center gap-4">
@@ -869,7 +902,14 @@
         }
 
         function saveState() {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); }
+            try {
+                // Marquer la date de modification (sauf si c'est un chargement Drive)
+                if (!window.__skipTouch) {
+                    appState.lastModified = new Date().toISOString();
+                }
+                window.__skipTouch = false;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            }
             catch(e) { console.error('saveState failed', e); }
         }
 
@@ -1040,7 +1080,7 @@
             selMobile.onchange = onProfileChange;
         }
 
-        function renderAll() {
+          function renderAll() {
             renderProfileSelectors();
             renderDashboard();
             renderGrowthView();
@@ -1049,6 +1089,10 @@
             renderVaccinesAndMilestones();
             renderLiaison();
             updateBackupStatusDisplay();
+            // Sync du panneau (après un tick pour laisser le DOM se mettre à jour)
+            if (typeof updateSyncPanel === 'function') {
+                setTimeout(() => updateSyncPanel().catch(e => console.warn('[Sync] refresh', e)), 100);
+            }
         }
 
         function renderDashboard() {
@@ -2666,6 +2710,18 @@
                     renderAppointments();
                     // Backup immédiat après autorisation
                     performEncryptedDriveBackup();
+                    updateGoogleDriveStatus();
+                    showToast('✅ Google Drive connecté', 'success');
+                    renderAppointments();
+                    performEncryptedDriveBackup();
+                    // Rafraîchir le panneau de sync
+                    setTimeout(() => {
+                        if (typeof updateSyncPanel === 'function') updateSyncPanel();
+                    }, 1000);
+                    // Rafraîchir aussi le panneau de sync (si présent)
+            if (typeof updateSyncPanel === 'function') {
+                updateSyncPanel().catch(e => console.warn('[Sync] refresh', e));
+            }
                 }   
                 
             });
@@ -2924,7 +2980,7 @@
             `).join('');
         }
 
-        async function restoreFromDrive(fileId) {
+            async function restoreFromDrive(fileId, driveInfo = null) {
             const password = prompt('🔒 Mot de passe de déchiffrement :');
             if (!password) return;
 
@@ -2942,17 +2998,213 @@
 
                 if (!confirm('⚠️ Remplacer TOUTES les données actuelles par cette sauvegarde ?')) return;
 
+
                 appState = parsed.appState;
                 if (!appState.liaison) appState.liaison = {};
                 if (appState.profiles) {
                     appState.profiles.forEach(p => { if (p.bloodType === undefined) p.bloodType = ''; });
                 }
+                // Préserver la date Drive (ne pas marquer comme modif locale)
+                window.__skipTouch = true;
+                appState.lastModified = driveInfo?.date || parsed.exportedAt || new Date().toISOString();
                 saveState();
+                window.__skipTouch = false;
                 renderAll();
                 showToast('✅ Données restaurées depuis Drive', 'success');
+
             } catch (err) {
                 console.error('[Drive restore]', err);
                 showToast('❌ Déchiffrement impossible (mot de passe ?)', 'error');
+            }
+        }
+
+
+
+        // ============================================
+        // ===== SYNCHRONISATION MANUELLE DRIVE =======
+        // ============================================
+
+        // Récupère la date de dernière modif locale
+        function getLocalModifiedDate() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                return data.lastModified || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Met à jour la date de dernière modif locale
+        function touchLocalModified() {
+            appState.lastModified = new Date().toISOString();
+        }
+
+        // Récupère la date du dernier fichier de sauvegarde Drive
+        async function getDriveLastModified() {
+            if (!isGoogleTokenValid()) return null;
+            try {
+                const res = await fetch(
+                    "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name contains 'santepro-backup'&orderBy=createdTime desc&fields=files(id,name,createdTime)&pageSize=1",
+                    { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+                );
+                const data = await res.json();
+                if (!data.files || data.files.length === 0) return null;
+                return {
+                    date: data.files[0].createdTime,
+                    fileId: data.files[0].id,
+                    fileName: data.files[0].name
+                };
+            } catch (e) {
+                console.error('[Sync] getDriveLastModified', e);
+                return null;
+            }
+        }
+
+        // Formatte une date ISO pour affichage
+        function formatSyncDate(isoStr) {
+            if (!isoStr) return '--';
+            const d = new Date(isoStr);
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Met à jour l'affichage complet du panneau de sync
+        async function updateSyncPanel() {
+            const statusText = document.getElementById('syncStatusText');
+            const localDateEl = document.getElementById('syncLocalDate');
+            const driveDateEl = document.getElementById('syncDriveDate');
+            const hintEl = document.getElementById('syncHint');
+            const hintText = document.getElementById('syncHintText');
+            const authBtn = document.getElementById('syncAuthBtn');
+            const loadBtn = document.getElementById('syncLoadBtn');
+            const uploadBtn = document.getElementById('syncUploadBtn');
+
+            if (!statusText) return; // panneau absent
+
+            // Date locale
+            const localDate = getLocalModifiedDate();
+            localDateEl.textContent = formatSyncDate(localDate);
+
+            // Si Google pas configuré → afficher bouton "Autoriser"
+            const clientId = getGoogleClientId();
+            if (!clientId) {
+                statusText.textContent = 'Google Drive non configuré';
+                driveDateEl.textContent = '--';
+                hintEl.classList.add('hidden');
+                authBtn.classList.remove('hidden');
+                authBtn.innerHTML = '<i class="fa-solid fa-gear"></i> Configurer Google';
+                authBtn.onclick = () => switchView('settings');
+                loadBtn.disabled = true;
+                uploadBtn.disabled = true;
+                loadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                uploadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            // Google configuré mais pas connecté
+            if (!isGoogleTokenValid()) {
+                statusText.textContent = 'Connectez Google pour synchroniser';
+                driveDateEl.textContent = '(non connecté)';
+                hintEl.classList.add('hidden');
+                authBtn.classList.remove('hidden');
+                authBtn.innerHTML = '<i class="fa-brands fa-google"></i> Autoriser Google';
+                authBtn.onclick = connectGoogleDrive;
+                loadBtn.disabled = true;
+                uploadBtn.disabled = true;
+                loadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                uploadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            // Google connecté → masquer bouton auth, activer les boutons
+            authBtn.classList.add('hidden');
+            loadBtn.disabled = false;
+            uploadBtn.disabled = false;
+            loadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            // Récupérer la date Drive
+            const driveInfo = await getDriveLastModified();
+            if (driveInfo) {
+                driveDateEl.textContent = formatSyncDate(driveInfo.date);
+            } else {
+                driveDateEl.textContent = 'Aucune sauvegarde';
+            }
+
+            // Analyse de l'état
+            const localTime = localDate ? new Date(localDate).getTime() : 0;
+            const driveTime = driveInfo ? new Date(driveInfo.date).getTime() : 0;
+
+            if (!driveInfo && !localDate) {
+                statusText.textContent = 'Prêt à synchroniser';
+                hintEl.classList.add('hidden');
+            } else if (!driveInfo) {
+                statusText.textContent = 'Aucune sauvegarde Drive';
+                hintEl.classList.remove('hidden');
+                hintText.textContent = 'Vous avez des données locales mais rien sur Drive. Cliquez sur "Envoyer vers Drive" pour créer votre première sauvegarde.';
+            } else if (!localDate) {
+                statusText.textContent = 'Drive plus récent que local';
+                hintEl.classList.remove('hidden');
+                hintText.textContent = 'Vos données Drive sont plus récentes. Cliquez sur "Charger depuis Drive" pour les récupérer.';
+            } else if (Math.abs(localTime - driveTime) < 60000) {
+                // Moins d'une minute d'écart → considérés synchronisés
+                statusText.textContent = '✅ Synchronisé';
+                hintEl.classList.add('hidden');
+            } else if (localTime > driveTime) {
+                statusText.textContent = '⚠️ Local plus récent que Drive';
+                hintEl.classList.remove('hidden');
+                hintText.textContent = 'Vous avez modifié des données localement. Cliquez sur "Envoyer vers Drive" pour les sauvegarder.';
+            } else {
+                statusText.textContent = '⚠️ Drive plus récent que Local';
+                hintEl.classList.remove('hidden');
+                hintText.textContent = 'Le Drive contient des données plus récentes. Cliquez sur "Charger depuis Drive" pour les récupérer.';
+            }
+        }
+
+        // Bouton "Charger depuis Drive"
+        async function manualLoadFromDrive() {
+            if (!isGoogleTokenValid()) {
+                showToast('Connectez Google d\'abord', 'error');
+                return;
+            }
+
+            // Récupère le fichier le plus récent
+            const driveInfo = await getDriveLastModified();
+            if (!driveInfo) {
+                showToast('Aucune sauvegarde trouvée sur Drive', 'error');
+                return;
+            }
+
+            // Confirmation
+            const localDate = getLocalModifiedDate();
+            if (localDate) {
+                const ok = confirm(
+                    `⚠️ Attention\n\n` +
+                    `Local : ${formatSyncDate(localDate)}\n` +
+                    `Drive : ${formatSyncDate(driveInfo.date)}\n\n` +
+                    `Charger depuis Drive va REMPLACER vos données locales actuelles.\n\n` +
+                    `Continuer ?`
+                );
+                if (!ok) return;
+            }
+
+            await restoreFromDrive(driveInfo.fileId, driveInfo);
+            await updateSyncPanel();
+        }
+
+        // Bouton "Envoyer vers Drive"
+        async function manualUploadToDrive() {
+            if (!isGoogleTokenValid()) {
+                showToast('Connectez Google d\'abord', 'error');
+                return;
+            }
+            touchLocalModified();
+            saveState();
+            const ok = await performEncryptedDriveBackup();
+            if (ok) {
+                await updateSyncPanel();
             }
         }
 
@@ -3073,6 +3325,9 @@
             loadState();
             checkDailyAutoBackup();
             updateGoogleDriveStatus();
+                        setTimeout(() => {
+                if (typeof updateSyncPanel === 'function') updateSyncPanel();
+            }, 500);
 
 
             const today = new Date().toISOString().split('T')[0];
