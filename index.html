@@ -274,11 +274,16 @@
                         <button onclick="openModal('addGrowthModal')" class="mt-2 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-3 py-2 rounded-lg"><i class="fa-solid fa-plus mr-1"></i> Ajouter une mesure</button>
                     </div>
                 </div>
+
+
                 <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 pt-2 border-t border-slate-100">
                     <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span> Mesures réelles</span>
-                    <span class="flex items-center gap-2"><span class="w-3 h-0.5 bg-slate-400 inline-block"></span> Médiane OMS (50%)</span>
-                    <span class="flex items-center gap-2"><span class="w-3 h-0.5 border-b border-dashed border-slate-300 inline-block"></span> Limites OMS (3% & 97%)</span>
+                    <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> Hors courbes OMS</span>
+                    <span class="flex items-center gap-2"><span class="w-3 h-0.5 bg-slate-600 inline-block"></span> Médiane OMS (50%)</span>
+                    <span class="flex items-center gap-2"><span class="w-3 h-0.5 border-b border-dashed border-slate-400 inline-block"></span> Percentiles 3, 15, 85, 97</span>
+                    <span class="flex items-center gap-2"><span class="w-3 h-3 bg-slate-200 inline-block rounded-sm"></span> Zone normale</span>
                 </div>
+
             </div>
 
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -1055,14 +1060,41 @@
             document.getElementById('dashProfileName').innerText = profile.name;
             document.getElementById('statAge').innerText = calculateAgeStr(profile.dob);
 
-            const sortedGrowth = [...recs.growth].sort((a,b) => new Date(b.date) - new Date(a.date));
+   
+               const sortedGrowth = [...recs.growth].sort((a,b) => new Date(b.date) - new Date(a.date));
             if (sortedGrowth.length > 0) {
-                document.getElementById('statWeight').innerText = (sortedGrowth[0].weight || '--') + ' kg';
-                document.getElementById('statHeight').innerText = (sortedGrowth[0].height || '--') + ' cm';
+                const latest = sortedGrowth[0];
+                const ageM = ageInMonths(profile.dob, latest.date);
+
+                // Poids avec badge
+                const wEl = document.getElementById('statWeight');
+                const wText = (latest.weight || '--') + ' kg';
+                const wP = latest.weight ? calculatePercentile('weight', profile.gender, ageM, latest.weight) : null;
+                if (wP && !wP.inRange) {
+                    wEl.innerHTML = `${wText} <span class="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded ml-1">⚠️ ${wP.label}</span>`;
+                } else if (wP) {
+                    wEl.innerHTML = `${wText} <span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded ml-1">${wP.label}</span>`;
+                } else {
+                    wEl.innerText = wText;
+                }
+
+                // Taille avec badge
+                const hEl = document.getElementById('statHeight');
+                const hText = (latest.height || '--') + ' cm';
+                const hP = latest.height ? calculatePercentile('height', profile.gender, ageM, latest.height) : null;
+                if (hP && !hP.inRange) {
+                    hEl.innerHTML = `${hText} <span class="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded ml-1">⚠️ ${hP.label}</span>`;
+                } else if (hP) {
+                    hEl.innerHTML = `${hText} <span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded ml-1">${hP.label}</span>`;
+                } else {
+                    hEl.innerText = hText;
+                }
             } else {
                 document.getElementById('statWeight').innerText = '-- kg';
                 document.getElementById('statHeight').innerText = '-- cm';
             }
+   
+   
 
             const doneVac = recs.vaccines.filter(v => v.status === 'done').length;
             document.getElementById('statVaccines').innerText = `${doneVac} / ${recs.vaccines.length} faits`;
@@ -1129,7 +1161,9 @@
             renderGrowthChart();
         }
 
-        function renderGrowthTable() {
+      
+      
+              function renderGrowthTable() {
             const profile = getCurrentProfile();
             const recs = [...getCurrentRecords().growth].sort((a,b) => b.date.localeCompare(a.date));
             const tbody = document.getElementById('growthHistoryTable');
@@ -1137,19 +1171,32 @@
                 tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Aucune donnée de croissance enregistrée.</td></tr>';
                 return;
             }
+
+            // Helper qui génère un badge percentile
+            const badgePercentile = (metric, value, date) => {
+                if (value == null) return '<span class="text-slate-300">--</span>';
+                const ageM = ageInMonths(profile.dob, date);
+                const p = calculatePercentile(metric, profile.gender, ageM, value);
+                if (!p) return '';
+                if (!p.inRange) {
+                    return `<span class="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded ml-1" title="Hors courbes OMS 3-97%">⚠️ ${p.label}</span>`;
+                }
+                return `<span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded ml-1">${p.label}</span>`;
+            };
+
             tbody.innerHTML = recs.map(r => `
                 <tr class="hover:bg-slate-50/80 transition">
                     <td class="p-4 font-semibold text-slate-800">${formatDateFR(r.date)}</td>
                     <td class="p-4 text-slate-500">${calculateAgeStr(profile.dob, r.date)}</td>
-                    <td class="p-4 font-bold text-slate-800">${r.weight ? r.weight + ' kg' : '--'}</td>
-                    <td class="p-4 font-bold text-slate-800">${r.height ? r.height + ' cm' : '--'}</td>
-                    <td class="p-4 font-bold text-slate-800">${r.headCirc ? r.headCirc + ' cm' : '--'}</td>
+                    <td class="p-4 font-bold text-slate-800">${r.weight ? r.weight + ' kg' : '--'}${badgePercentile('weight', r.weight, r.date)}</td>
+                    <td class="p-4 font-bold text-slate-800">${r.height ? r.height + ' cm' : '--'}${badgePercentile('height', r.height, r.date)}</td>
+                    <td class="p-4 font-bold text-slate-800">${r.headCirc ? r.headCirc + ' cm' : '--'}${badgePercentile('headCirc', r.headCirc, r.date)}</td>
                     <td class="p-4 text-right"><button onclick="deleteGrowthRecord('${r.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>
             `).join('');
         }
-
-        function renderGrowthChart() {
+      
+                function renderGrowthChart() {
             const canvas = document.getElementById('growthChart');
             const emptyState = document.getElementById('growthChartEmpty');
             if (!canvas) return;
@@ -1170,18 +1217,50 @@
             emptyState.classList.remove('flex');
 
             const ctx = canvas.getContext('2d');
-            const labels = recs.map(r => calculateAgeStr(profile.dob, r.date));
+
+            // Labels = âge au moment de chaque mesure
+            const labels = recs.map(r => {
+                const ageM = ageInMonths(profile.dob, r.date);
+                const years = Math.floor(ageM / 12);
+                const months = Math.round(ageM % 12);
+                if (years === 0) return `${months} mois`;
+                return `${years}a ${months}m`;
+            });
+
+            // Données réelles de l'enfant
             const childData = recs.map(r => r[currentGrowthMetric] || null);
 
-            let who3 = [], who50 = [], who97 = [];
-            recs.forEach((r, idx) => {
-                let base3 = 3, base50 = 3.5, base97 = 4.5;
-                if (currentGrowthMetric === 'height') { base3 = 46; base50 = 50; base97 = 54; }
-                if (currentGrowthMetric === 'headCirc') { base3 = 32; base50 = 35; base97 = 38; }
-                const step = currentGrowthMetric === 'weight' ? 2.2 : (currentGrowthMetric === 'height' ? 9.5 : 3.0);
-                who3.push(base3 + idx * step * 0.85);
-                who50.push(base50 + idx * step);
-                who97.push(base97 + idx * step * 1.15);
+            // Récupère les percentiles OMS pour chaque point
+            const whoP3  = [];
+            const whoP15 = [];
+            const whoP50 = [];
+            const whoP85 = [];
+            const whoP97 = [];
+
+            recs.forEach(r => {
+                const ageM = ageInMonths(profile.dob, r.date);
+                const values = interpolateWHO(currentGrowthMetric, profile.gender, ageM);
+                if (values) {
+                    whoP3.push(values[0]);
+                    whoP15.push(values[1]);
+                    whoP50.push(values[2]);
+                    whoP85.push(values[3]);
+                    whoP97.push(values[4]);
+                } else {
+                    whoP3.push(null); whoP15.push(null); whoP50.push(null);
+                    whoP85.push(null); whoP97.push(null);
+                }
+            });
+
+            // Couleur des points selon percentile
+            const pointColors = recs.map(r => {
+                const val = r[currentGrowthMetric];
+                if (val == null) return '#4f46e5';
+                const ageM = ageInMonths(profile.dob, r.date);
+                const p = calculatePercentile(currentGrowthMetric, profile.gender, ageM, val);
+                if (!p) return '#4f46e5';
+                if (!p.inRange) return '#dc2626'; // rouge
+                return '#4f46e5'; // normal
             });
 
             growthChartInstance = new Chart(ctx, {
@@ -1189,23 +1268,121 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Enfant', data: childData, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.15)', borderWidth: 3, pointBackgroundColor: '#ffffff', pointBorderColor: '#4f46e5', pointBorderWidth: 3, pointRadius: 6, fill: true, tension: 0.35, zIndex: 10 },
-                        { label: 'Médiane OMS (50%)', data: who50, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.35 },
-                        { label: 'OMS 97e', data: who97, borderColor: '#cbd5e1', borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0.35 },
-                        { label: 'OMS 3e', data: who3, borderColor: '#cbd5e1', borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false, tension: 0.35 }
+                        // Zone OMS 3-97 (bande grise)
+                        {
+                            label: 'Zone OMS (3-97%)',
+                            data: whoP3,
+                            borderColor: 'transparent',
+                            backgroundColor: 'rgba(148, 163, 184, 0.08)',
+                            pointRadius: 0,
+                            fill: '+1',
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 3e',
+                            data: whoP3,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1.5,
+                            borderDash: [4,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 15e',
+                            data: whoP15,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1,
+                            borderDash: [2,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'Médiane OMS (50%)',
+                            data: whoP50,
+                            borderColor: '#64748b',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 85e',
+                            data: whoP85,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1,
+                            borderDash: [2,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 97e',
+                            data: whoP97,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1.5,
+                            borderDash: [4,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        // Enfant
+                        {
+                            label: 'Enfant',
+                            data: childData,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.15)',
+                            borderWidth: 3,
+                            pointBackgroundColor: pointColors,
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 3,
+                            pointRadius: 7,
+                            fill: false,
+                            tension: 0.35,
+                            zIndex: 10
+                        }
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: (context) => {
+                                    if (context.dataset.label !== 'Enfant') return '';
+                                    const idx = context.dataIndex;
+                                    const val = childData[idx];
+                                    if (val == null) return '';
+                                    const ageM = ageInMonths(profile.dob, recs[idx].date);
+                                    const p = calculatePercentile(currentGrowthMetric, profile.gender, ageM, val);
+                                    if (!p) return '';
+                                    return p.inRange ? `📊 ${p.label}` : `⚠️ ${p.label} — hors courbes OMS`;
+                                }
+                            }
+                        }
+                    },
                     scales: {
-                        y: { grid: { color: '#f1f5f9' }, title: { display: true, text: currentGrowthMetric.toUpperCase(), font: { size: 11, weight: 'bold' } } },
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            title: {
+                                display: true,
+                                text: currentGrowthMetric === 'weight' ? 'Poids (kg)' :
+                                      currentGrowthMetric === 'height' ? 'Taille (cm)' : 'Périmètre Crânien (cm)',
+                                font: { size: 11, weight: 'bold' }
+                            }
+                        },
                         x: { grid: { display: false } }
                     }
                 }
             });
         }
-
+        
+        
+        
+        
         // --- DOCUMENTS ---
         function filterDocCategory(cat) {
             currentDocCategory = cat;
@@ -1875,6 +2052,176 @@
         }
 
         // ============ QR CODE D'URGENCE ============
+        
+        // ============================================
+        // ===== DONNÉES OMS 2006 (0-5 ans) ===========
+        // ============================================
+        // Source : WHO Child Growth Standards 2006
+        // https://www.who.int/tools/child-growth-standards
+        // Données condensées : un point tous les 6 mois
+        // Format : { age_months: [p3, p15, p50, p85, p97] }
+        // ============================================
+        const WHO_DATA = {
+            // ---- POIDS (kg) ----
+            weight: {
+                M: {
+                    0:  [2.5, 2.9, 3.3, 3.9, 4.4],
+                    6:  [6.4, 7.1, 7.9, 8.8, 9.8],
+                    12: [7.7, 8.6, 9.6, 10.8, 12.0],
+                    18: [8.8, 9.8, 10.9, 12.3, 13.7],
+                    24: [9.7, 10.8, 12.2, 13.8, 15.3],
+                    30: [10.5, 11.8, 13.3, 15.1, 16.9],
+                    36: [11.3, 12.7, 14.3, 16.2, 18.3],
+                    42: [12.0, 13.4, 15.3, 17.4, 19.7],
+                    48: [12.7, 14.3, 16.3, 18.6, 21.2],
+                    54: [13.4, 15.0, 17.3, 19.8, 22.7],
+                    60: [14.1, 15.8, 18.3, 21.0, 24.2]
+                },
+                F: {
+                    0:  [2.4, 2.8, 3.2, 3.7, 4.2],
+                    6:  [5.7, 6.5, 7.3, 8.2, 9.2],
+                    12: [7.0, 7.9, 8.9, 10.1, 11.5],
+                    18: [8.1, 9.1, 10.2, 11.6, 13.2],
+                    24: [9.0, 10.2, 11.5, 13.1, 14.8],
+                    30: [9.9, 11.1, 12.6, 14.3, 16.3],
+                    36: [10.8, 12.1, 13.9, 15.8, 18.1],
+                    42: [11.6, 13.0, 14.9, 17.0, 19.6],
+                    48: [12.3, 13.9, 16.1, 18.5, 21.5],
+                    54: [13.1, 14.8, 17.2, 19.9, 23.2],
+                    60: [13.9, 15.8, 18.3, 21.2, 24.9]
+                }
+            },
+            // ---- TAILLE (cm) ----
+            height: {
+                M: {
+                    0:  [46.1, 48.0, 49.9, 51.8, 53.7],
+                    6:  [63.6, 65.4, 67.6, 69.8, 71.6],
+                    12: [71.0, 73.0, 75.7, 78.4, 80.5],
+                    18: [76.9, 79.2, 82.3, 85.4, 87.7],
+                    24: [81.7, 84.2, 87.1, 90.0, 92.9],
+                    30: [85.6, 88.4, 91.9, 95.3, 98.2],
+                    36: [88.7, 91.9, 96.1, 99.9, 103.5],
+                    42: [91.2, 94.7, 99.4, 103.8, 107.4],
+                    48: [94.2, 97.6, 102.7, 107.4, 111.0],
+                    54: [96.9, 100.4, 105.6, 110.4, 114.6],
+                    60: [100.7, 104.3, 110.0, 115.2, 119.2]
+                },
+                F: {
+                    0:  [45.4, 47.3, 49.1, 51.0, 52.9],
+                    6:  [61.2, 63.5, 65.7, 67.9, 70.3],
+                    12: [68.9, 71.3, 74.0, 76.7, 79.2],
+                    18: [74.9, 77.5, 80.7, 83.9, 86.5],
+                    24: [80.0, 82.9, 85.7, 88.9, 91.7],
+                    30: [84.1, 86.9, 90.3, 93.7, 96.6],
+                    36: [87.4, 90.5, 94.1, 97.9, 101.1],
+                    42: [90.4, 93.5, 97.5, 101.5, 104.8],
+                    48: [93.3, 96.6, 100.8, 105.0, 108.3],
+                    54: [96.2, 99.6, 103.9, 108.2, 111.8],
+                    60: [99.1, 102.7, 107.1, 111.6, 115.6]
+                }
+            },
+            // ---- PÉRIMÈTRE CRÂNIEN (cm) ----
+            headCirc: {
+                M: {
+                    0:  [32.1, 33.5, 34.5, 35.5, 36.9],
+                    6:  [41.0, 42.3, 43.3, 44.6, 45.6],
+                    12: [43.7, 44.9, 46.1, 47.3, 48.5],
+                    18: [44.9, 46.1, 47.2, 48.4, 49.6],
+                    24: [45.6, 46.8, 48.0, 49.2, 50.4],
+                    30: [46.3, 47.5, 48.6, 49.8, 51.0],
+                    36: [46.8, 47.9, 49.1, 50.3, 51.5],
+                    42: [47.1, 48.2, 49.4, 50.7, 51.9],
+                    48: [47.3, 48.5, 49.7, 50.9, 52.1],
+                    54: [47.5, 48.7, 49.9, 51.1, 52.3],
+                    60: [47.7, 48.9, 50.1, 51.3, 52.5]
+                },
+                F: {
+                    0:  [31.7, 32.9, 33.9, 34.9, 36.1],
+                    6:  [39.5, 40.9, 42.2, 43.5, 44.9],
+                    12: [42.3, 43.4, 44.7, 46.0, 47.1],
+                    18: [43.5, 44.7, 45.9, 47.1, 48.3],
+                    24: [44.2, 45.4, 46.6, 47.8, 49.0],
+                    30: [44.8, 46.0, 47.2, 48.4, 49.6],
+                    36: [45.3, 46.5, 47.7, 48.9, 50.1],
+                    42: [45.6, 46.8, 48.0, 49.2, 50.4],
+                    48: [45.9, 47.1, 48.3, 49.5, 50.7],
+                    54: [46.1, 47.3, 48.5, 49.7, 50.9],
+                    60: [46.3, 47.5, 48.7, 49.9, 51.1]
+                }
+            }
+        };
+
+        // Interpole les valeurs OMS pour un âge donné (en mois)
+        // Retourne [p3, p15, p50, p85, p97]
+        function interpolateWHO(metric, gender, ageMonths) {
+            const data = WHO_DATA[metric]?.[gender];
+            if (!data) return null;
+
+            const ages = Object.keys(data).map(Number).sort((a, b) => a - b);
+
+            // Cas : âge < min
+            if (ageMonths <= ages[0]) return data[ages[0]];
+            // Cas : âge > max (extrapolation linéaire sur le dernier segment)
+            if (ageMonths >= ages[ages.length - 1]) {
+                return data[ages[ages.length - 1]];
+            }
+
+            // Trouve les deux points encadrants
+            let lower = ages[0], upper = ages[ages.length - 1];
+            for (let i = 0; i < ages.length - 1; i++) {
+                if (ages[i] <= ageMonths && ageMonths <= ages[i + 1]) {
+                    lower = ages[i];
+                    upper = ages[i + 1];
+                    break;
+                }
+            }
+
+            const ratio = (ageMonths - lower) / (upper - lower);
+            const vLower = data[lower];
+            const vUpper = data[upper];
+
+            return vLower.map((v, i) => v + (vUpper[i] - v) * ratio);
+        }
+
+        // Calcule l'âge exact en mois (avec décimales)
+        function ageInMonths(dobStr, atDateStr = null) {
+            const dob = new Date(dobStr);
+            const target = atDateStr ? new Date(atDateStr) : new Date();
+            const years = target.getFullYear() - dob.getFullYear();
+            const months = target.getMonth() - dob.getMonth();
+            const days = target.getDate() - dob.getDate();
+            return years * 12 + months + days / 30;
+        }
+
+        // Détermine le percentile approximatif d'une valeur selon les courbes OMS
+        // Retourne { percentile: number, inRange: bool, label: string }
+        function calculatePercentile(metric, gender, ageMonths, value) {
+            const whoValues = interpolateWHO(metric, gender, ageMonths);
+            if (!whoValues || value == null) return null;
+
+            const [p3, p15, p50, p85, p97] = whoValues;
+
+            // Hors plage
+            if (value < p3) return { percentile: 3, inRange: false, level: 'low', label: '< 3e percentile' };
+            if (value > p97) return { percentile: 97, inRange: false, level: 'high', label: '> 97e percentile' };
+
+            // Interpolation dans les intervalles
+            let percentile;
+            if (value <= p15) percentile = 3 + ((value - p3) / (p15 - p3)) * 12;
+            else if (value <= p50) percentile = 15 + ((value - p15) / (p50 - p15)) * 35;
+            else if (value <= p85) percentile = 50 + ((value - p50) / (p85 - p50)) * 35;
+            else percentile = 85 + ((value - p85) / (p97 - p85)) * 12;
+
+            const rounded = Math.round(percentile);
+            return {
+                percentile: rounded,
+                inRange: true,
+                level: 'normal',
+                label: `${rounded}ᵉ percentile`
+            };
+        }
+
+        
         const QR_URL_LIMIT = 2900;
 
         async function deriveKeyFromPassword(password, salt) {
