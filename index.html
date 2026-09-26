@@ -1589,7 +1589,9 @@
                         ${d.tags ? `<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md mb-3">${esc(d.tags)}</span>` : ''}
                     </div>
                     <div class="pt-3 border-t border-slate-100 flex gap-2">
-                        <button onclick="showToast('Aperçu du document sécurisé.', 'info')" class="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg transition">Aperçu</button>
+                        ${d.photo
+                            ? `<button onclick="viewDocumentPhoto('${d.id}')" class="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-eye mr-1"></i>Aperçu</button>`
+                            : `<button onclick="showToast('Aucune photo attachée à ce document', 'info')" class="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold rounded-lg transition cursor-not-allowed" title="Aucune photo attachée"><i class="fa-solid fa-eye-slash mr-1"></i>Aperçu</button>`}
                     </div>
                 </div>
             `).join('');
