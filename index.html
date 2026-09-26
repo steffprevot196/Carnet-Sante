@@ -1258,6 +1258,9 @@
             }
             grid.innerHTML = recs.map(a => {
                 const isPast = a.date < todayStr;
+                
+                                const calSynced = isCalendarSynced(a.id);
+                const calAvailable = isCalendarEnabled();
                 return `
                 <div class="bg-white rounded-2xl border ${isPast ? 'border-slate-200 opacity-60' : 'border-indigo-100'} p-5 shadow-sm space-y-3 relative overflow-hidden group">
                     <div class="flex justify-between items-start">
@@ -1265,14 +1268,45 @@
                             <span class="text-[10px] uppercase leading-none opacity-80">${new Date(a.date).toLocaleDateString('fr-FR', {month:'short'})}</span>
                             <span class="text-base leading-none mt-0.5">${new Date(a.date).getDate()}</span>
                         </div>
-                        <button onclick="deleteAppointment('${a.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash-can"></i></button>
+                        <button onclick="deleteAppointment('${a.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 opacity-0 group-hover:opacity-100 transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-800 text-sm">${esc(a.doctor)}</h4>
                         <p class="text-xs text-slate-500"><i class="fa-regular fa-clock mr-1"></i>${esc(a.time)} - ${esc(a.location || 'Cabinet')}</p>
                         ${a.notes ? `<p class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg mt-2 font-medium">${esc(a.notes)}</p>` : ''}
                     </div>
+                    ${calAvailable ? `
+                    <div class="pt-3 border-t border-slate-100">
+                        ${calSynced ? `
+                            <button onclick="removeAppointmentFromGoogleCalendar('${a.id}')"
+                                    class="w-full text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition">
+                                <i class="fa-solid fa-calendar-check"></i> Dans Google Agenda
+                                <i class="fa-solid fa-xmark text-[10px] opacity-60 ml-1"></i>
+                            </button>
+                        ` : `
+                            <button onclick="syncAppointmentToGoogleCalendar('${a.id}')"
+                                    class="w-full text-[11px] bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 font-bold px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition">
+                                <i class="fa-brands fa-google"></i> Ajouter à Google Agenda
+                            </button>
+                        `}
+                    </div>
+                    ` : ''}
                 </div>`;
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
             }).join('');
         }
 
@@ -2119,7 +2153,7 @@
         // ============================================
         // ============ GOOGLE DRIVE CHIFFRÉ ==========
         // ============================================
-        const SCOPE_DRIVE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata';
+        const SCOPE_DRIVE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/calendar.events';
         const DRIVE_ENC_SALT = 'santepro-drive-v1';
 
         let googleTokenClient = null;
@@ -2417,6 +2451,116 @@
             } catch (err) {
                 console.error('[Drive restore]', err);
                 showToast('❌ Déchiffrement impossible (mot de passe ?)', 'error');
+            }
+        }
+
+
+        // ============================================
+        // ==== SYNCHRONISATION GOOGLE AGENDA =========
+        // ============================================
+        function isCalendarSynced(appointmentId) {
+            return !!localStorage.getItem(`santePro_gcal_${appointmentId}`);
+        }
+
+        function isCalendarEnabled() {
+            return isGoogleTokenValid() && googleAccessToken;
+        }
+
+        async function syncAppointmentToGoogleCalendar(appointmentId) {
+            if (!isGoogleTokenValid()) {
+                showToast('Connectez Google d\'abord (bouton "Autoriser Google")', 'error');
+                return;
+            }
+
+            const recs = getCurrentRecords();
+            const appt = recs.appointments.find(a => a.id === appointmentId);
+            if (!appt) {
+                showToast('Rendez-vous introuvable', 'error');
+                return;
+            }
+
+            // Si déjà synchronisé, on prévient
+            if (isCalendarSynced(appointmentId)) {
+                const choice = confirm('Ce RDV est déjà synchronisé.\n\nOK = Créer un doublon\nAnnuler = Ne rien faire');
+                if (!choice) return;
+            }
+
+            // Calcul horaires
+            const [year, month, day] = appt.date.split('-').map(Number);
+            const [hours, minutes] = appt.time.split(':').map(Number);
+            const startDate = new Date(year, month - 1, day, hours, minutes, 0);
+            const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+
+            const pad = (n) => String(n).padStart(2, '0');
+            const fmtLocal = (d) =>
+                `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+
+            const profile = getCurrentProfile();
+            const event = {
+                summary: `RDV : ${appt.doctor}`,
+                location: appt.location || '',
+                description: (appt.notes ? appt.notes + '\n\n' : '') + `Profil : ${profile.name}\nCréé depuis SantéPro`,
+                start: { dateTime: fmtLocal(startDate), timeZone: 'Europe/Paris' },
+                end:   { dateTime: fmtLocal(endDate),   timeZone: 'Europe/Paris' },
+                reminders: {
+                    useDefault: false,
+                    overrides: [
+                        { method: 'popup', minutes: 60 },
+                        { method: 'popup', minutes: 1440 }
+                    ]
+                }
+            };
+
+            try {
+                const res = await fetch(
+                    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${googleAccessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(event)
+                    }
+                );
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error?.message || `HTTP ${res.status}`);
+                }
+
+                const created = await res.json();
+                localStorage.setItem(`santePro_gcal_${appointmentId}`, created.id);
+                showToast('📅 RDV synchronisé dans Google Agenda', 'success');
+                renderAppointments();
+            } catch (err) {
+                console.error('[Calendar]', err);
+                showToast('❌ Synchro agenda : ' + err.message, 'error');
+            }
+        }
+
+        async function removeAppointmentFromGoogleCalendar(appointmentId) {
+            const eventId = localStorage.getItem(`santePro_gcal_${appointmentId}`);
+            if (!eventId || !isGoogleTokenValid()) return;
+
+            if (!confirm('Supprimer aussi l\'événement de votre Google Agenda ?')) return;
+
+            try {
+                const res = await fetch(
+                    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+                    {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${googleAccessToken}` }
+                    }
+                );
+                if (!res.ok && res.status !== 404 && res.status !== 410) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                localStorage.removeItem(`santePro_gcal_${appointmentId}`);
+                showToast('Événement supprimé de Google Agenda', 'info');
+            } catch (err) {
+                console.error('[Calendar delete]', err);
+                showToast('Erreur suppression agenda : ' + err.message, 'error');
             }
         }
 
