@@ -2177,7 +2177,8 @@
             googleTokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: clientId,
                 scope: SCOPE_DRIVE,
-                callback: (resp) => {
+                
+                             callback: (resp) => {
                     if (resp.error) {
                         showToast('Erreur Google : ' + resp.error, 'error');
                         return;
@@ -2187,9 +2188,12 @@
                     localStorage.setItem('santePro_googleLastAuth', new Date().toISOString());
                     updateGoogleDriveStatus();
                     showToast('✅ Google Drive connecté', 'success');
+                    // Rafraîchir l'UI pour faire apparaître les boutons Google Agenda
+                    renderAppointments();
                     // Backup immédiat après autorisation
                     performEncryptedDriveBackup();
-                }
+                }   
+                
             });
             return true;
         }
