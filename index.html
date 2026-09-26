@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
@@ -743,6 +744,48 @@
                     </div>
                     <img id="docPhotoThumb" class="w-full max-h-32 object-contain rounded-lg bg-white border border-slate-200" alt="Aperçu photo">
                 </div>
+                
+                
+                <!-- Zone OCR (cachée si aucune photo) -->
+                <div id="docOcrSection" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-bold text-amber-900">
+                            <i class="fa-solid fa-magnifying-glass text-amber-600 mr-1"></i>
+                            Extraction automatique du texte (OCR)
+                        </p>
+                        <button type="button" id="docOcrBtn" onclick="runOcrOnDocumentPhoto()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-bolt mr-1"></i> Extraire le texte
+                        </button>
+                    </div>
+
+                    <!-- Barre de progression -->
+                    <div id="docOcrProgress" class="hidden">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-spinner fa-spin text-amber-600 text-xs"></i>
+                            <p class="text-[11px] text-amber-800 font-semibold" id="docOcrProgressText">Initialisation...</p>
+                        </div>
+                        <div class="w-full bg-amber-200 rounded-full h-1.5 overflow-hidden">
+                            <div id="docOcrProgressBar" class="bg-amber-600 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Zone de texte OCR éditable -->
+                    <div id="docOcrResult" class="hidden">
+                        <p class="text-[10px] uppercase tracking-wider text-amber-700 font-bold mb-1">
+                            Texte extrait (corrigez si nécessaire)
+                        </p>
+                        <textarea id="docOcrText" rows="5" placeholder="Le texte détecté apparaîtra ici..." class="w-full text-xs border border-amber-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 outline-none bg-white resize-none font-mono"></textarea>
+                        <p class="text-[10px] text-amber-600 italic mt-1">
+                            💡 Ce texte est stocké avec le document et inclus dans la recherche.
+                        </p>
+                    </div>
+
+                    <!-- Message d'erreur -->
+                    <div id="docOcrError" class="hidden bg-rose-100 border border-rose-300 rounded-lg p-2 text-[11px] text-rose-800 flex items-start gap-2">
+                        <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
+                        <span id="docOcrErrorText"></span>
+                    </div>
+                </div>
 
                 <!-- Input caché pour fallback fichier -->
                 <input type="file" id="docFileInput" accept="image/*,application/pdf" class="hidden" onchange="handleDocFileSelected(event)">
@@ -890,12 +933,32 @@
     </div>
     
     <!-- Modal aperçu photo plein écran -->
-    <div id="photoViewerModal" class="fixed inset-0 bg-slate-900/90 z-[70] hidden items-center justify-center p-4 print-hide">
+    
+        <!-- Modal aperçu photo plein écran -->
+    <div id="photoViewerModal" class="fixed inset-0 bg-slate-900/95 z-[70] hidden items-center justify-center p-4 print-hide">
         <button onclick="closeModal('photoViewerModal')" class="absolute top-4 right-4 text-white/80 hover:text-white text-2xl z-10">
             <i class="fa-solid fa-xmark"></i>
         </button>
-        <img id="photoViewerImg" src="" alt="Document" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
+
+        <div class="max-w-5xl w-full max-h-full flex flex-col">
+            <!-- Onglets -->
+            <div id="photoViewerTabs" class="hidden flex gap-2 mb-3 justify-center">
+                <button id="tabBtnPhoto" onclick="switchPhotoViewerTab('photo')" class="text-sm font-bold px-4 py-2 rounded-lg transition bg-white text-slate-900">
+                    <i class="fa-solid fa-image mr-1"></i> Photo
+                </button>
+                <button id="tabBtnText" onclick="switchPhotoViewerTab('text')" class="text-sm font-bold px-4 py-2 rounded-lg transition bg-white/10 text-white hover:bg-white/20">
+                    <i class="fa-solid fa-align-left mr-1"></i> Texte OCR
+                </button>
+            </div>
+
+            <img id="photoViewerImg" src="" alt="Document" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl mx-auto">
+            <div id="photoViewerText" class="hidden bg-white rounded-lg shadow-2xl p-6 max-h-[80vh] overflow-y-auto">
+                <p class="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Texte extrait par OCR</p>
+                <pre id="photoViewerTextContent" class="whitespace-pre-wrap text-sm text-slate-800 font-mono"></pre>
+            </div>
+        </div>
     </div>
+    
     <div id="resetConfirmModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in border border-rose-100">
             <div class="p-6 text-center space-y-4">
@@ -1560,9 +1623,12 @@
 
         function renderDocuments() {
             const query = (document.getElementById('docSearchInput')?.value || '').toLowerCase();
-            const recs = getCurrentRecords().documents.filter(d => {
+                        const recs = getCurrentRecords().documents.filter(d => {
                 const matchCat = currentDocCategory === 'all' || d.category === currentDocCategory;
-                const matchQuery = d.title.toLowerCase().includes(query) || (d.tags && d.tags.toLowerCase().includes(query));
+                const matchQuery =
+                    d.title.toLowerCase().includes(query) ||
+                    (d.tags && d.tags.toLowerCase().includes(query)) ||
+                    (d.ocrText && d.ocrText.toLowerCase().includes(query)); // ← NOUVEAU
                 return matchCat && matchQuery;
             }).sort((a,b) => b.date.localeCompare(a.date));
 
@@ -1587,6 +1653,7 @@
                         <h4 class="font-bold text-slate-800 text-sm mb-1 line-clamp-1" title="${esc(d.title)}">${esc(d.title)}</h4>
                         <p class="text-[11px] text-slate-400 mb-2">${formatDateFR(d.date)} • ${esc(d.category)}</p>
                         ${d.tags ? `<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md mb-3">${esc(d.tags)}</span>` : ''}
+                                                ${d.ocrText ? `<span class="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md mb-3 ml-1" title="Texte OCR disponible"><i class="fa-solid fa-magnifying-glass mr-0.5"></i>OCR</span>` : ''}
                     </div>
                     <div class="pt-3 border-t border-slate-100 flex gap-2">
                         ${d.photo
@@ -2655,12 +2722,17 @@
             renderAll(); showToast('Mesure enregistrée !', 'success');
         }
 
-        function handleAddDocument(e) {
+                function handleAddDocument(e) {
             e.preventDefault();
             const recs = getCurrentRecords();
             const fileType = capturedDocPhotoDataUrl
                 ? (capturedDocPhotoDataUrl.startsWith('data:image') ? 'IMG' : 'PDF')
                 : 'PDF';
+
+            // Récupérer le texte OCR s'il existe
+            const ocrTextarea = document.getElementById('docOcrText');
+            const ocrText = ocrTextarea && ocrTextarea.value.trim() ? ocrTextarea.value.trim() : null;
+
             recs.documents.push({
                 id: 'd_' + Date.now(),
                 title: document.getElementById('docTitle').value.trim(),
@@ -2668,7 +2740,8 @@
                 category: document.getElementById('docCategory').value,
                 tags: document.getElementById('docTags').value.trim(),
                 fileType: fileType,
-                photo: capturedDocPhotoDataUrl || null // ← stocke la photo (data URL)
+                photo: capturedDocPhotoDataUrl || null,
+                ocrText: ocrText // ← NOUVEAU
             });
             // Réinitialiser l'état photo
             capturedDocPhotoDataUrl = null;
@@ -2678,7 +2751,7 @@
             clearDocPhoto();
             renderDocuments();
             renderDashboard();
-            showToast('Document enregistré !', 'success');
+            showToast('Document enregistré !' + (ocrText ? ' (avec texte OCR)' : ''), 'success');
         }
 
 
@@ -2970,7 +3043,11 @@
             if (titleInput && !titleInput.value) {
                 titleInput.value = 'Document scanné le ' + new Date().toLocaleDateString('fr-FR');
             }
-
+            // Afficher la zone OCR
+            const ocrSection = document.getElementById('docOcrSection');
+            if (ocrSection) ocrSection.classList.remove('hidden');
+            // Réinitialiser l'état OCR
+            resetOcrState();
             showToast('✅ Photo prête à être enregistrée', 'success');
         }
 
@@ -2980,6 +3057,33 @@
             const thumb = document.getElementById('docPhotoThumb');
             if (container) container.classList.add('hidden');
             if (thumb) thumb.src = '';
+            // Masquer la zone OCR
+            const ocrSection = document.getElementById('docOcrSection');
+            if (ocrSection) ocrSection.classList.add('hidden');
+            resetOcrState();
+        }
+
+        // Réinitialise l'état OCR (résultat, progression, erreurs)
+        function resetOcrState() {
+            const progress = document.getElementById('docOcrProgress');
+            const result = document.getElementById('docOcrResult');
+            const error = document.getElementById('docOcrError');
+            const progressBar = document.getElementById('docOcrProgressBar');
+            const progressText = document.getElementById('docOcrProgressText');
+            const ocrText = document.getElementById('docOcrText');
+            const ocrBtn = document.getElementById('docOcrBtn');
+
+            if (progress) progress.classList.add('hidden');
+            if (result) result.classList.add('hidden');
+            if (error) error.classList.add('hidden');
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressText) progressText.textContent = 'Initialisation...';
+            if (ocrText) ocrText.value = '';
+            if (ocrBtn) {
+                ocrBtn.disabled = false;
+                ocrBtn.innerHTML = '<i class="fa-solid fa-bolt mr-1"></i> Extraire le texte';
+                ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
 
         // Fallback : sélection de fichier classique
@@ -2999,10 +3103,17 @@
                 thumb.src = capturedDocPhotoDataUrl;
                 container.classList.remove('hidden');
 
-                const titleInput = document.getElementById('docTitle');
+                               const titleInput = document.getElementById('docTitle');
                 if (titleInput && !titleInput.value) {
                     titleInput.value = file.name.replace(/\.[^/.]+$/, '');
                 }
+
+                // Afficher la zone OCR
+                const ocrSection = document.getElementById('docOcrSection');
+                if (ocrSection) ocrSection.classList.remove('hidden');
+                resetOcrState();
+
+                showToast('✅ Fichier chargé', 'success');
 
                 showToast('✅ Fichier chargé', 'success');
             };
@@ -3010,13 +3121,144 @@
             event.target.value = '';
         }
 
-        function viewDocumentPhoto(docId) {
+                function viewDocumentPhoto(docId) {
             const recs = getCurrentRecords();
             const doc = recs.documents.find(d => d.id === docId);
             if (!doc || !doc.photo) return;
+
+            // Image
             document.getElementById('photoViewerImg').src = doc.photo;
+
+            // Onglets : visibles seulement si texte OCR disponible
+            const tabs = document.getElementById('photoViewerTabs');
+            const textContent = document.getElementById('photoViewerTextContent');
+            if (doc.ocrText && doc.ocrText.trim()) {
+                tabs.classList.remove('hidden');
+                textContent.textContent = doc.ocrText;
+                // Ouvrir par défaut sur la photo
+                switchPhotoViewerTab('photo');
+            } else {
+                tabs.classList.add('hidden');
+                switchPhotoViewerTab('photo');
+            }
+
             document.getElementById('photoViewerModal').classList.remove('hidden');
             document.getElementById('photoViewerModal').classList.add('flex');
+        }
+
+        function switchPhotoViewerTab(tab) {
+            const img = document.getElementById('photoViewerImg');
+            const text = document.getElementById('photoViewerText');
+            const btnPhoto = document.getElementById('tabBtnPhoto');
+            const btnText = document.getElementById('tabBtnText');
+
+            if (tab === 'photo') {
+                img.classList.remove('hidden');
+                text.classList.add('hidden');
+                if (btnPhoto) btnPhoto.className = 'text-sm font-bold px-4 py-2 rounded-lg transition bg-white text-slate-900';
+                if (btnText) btnText.className = 'text-sm font-bold px-4 py-2 rounded-lg transition bg-white/10 text-white hover:bg-white/20';
+            } else {
+                img.classList.add('hidden');
+                text.classList.remove('hidden');
+                if (btnPhoto) btnPhoto.className = 'text-sm font-bold px-4 py-2 rounded-lg transition bg-white/10 text-white hover:bg-white/20';
+                if (btnText) btnText.className = 'text-sm font-bold px-4 py-2 rounded-lg transition bg-white text-slate-900';
+            }
+        }
+
+        // ============================================
+        // ============ OCR AVEC TESSERACT.JS =========
+        // ============================================
+
+        // Instance globale du worker Tesseract (réutilisée)
+        let tesseractWorker = null;
+
+        async function getTesseractWorker() {
+            if (tesseractWorker) return tesseractWorker;
+
+            if (typeof Tesseract === 'undefined') {
+                throw new Error('Tesseract.js n\'est pas chargé. Vérifiez votre connexion.');
+            }
+
+            // Créer un worker avec français
+            tesseractWorker = await Tesseract.createWorker('fra', 1, {
+                logger: (m) => {
+                    // m.status : 'loading tesseract core', 'initializing tesseract', 'loading language traineddata', 'recognizing text'
+                    // m.progress : 0 à 1
+                    updateOcrProgress(m);
+                }
+            });
+            return tesseractWorker;
+        }
+
+        function updateOcrProgress(m) {
+            const progressText = document.getElementById('docOcrProgressText');
+            const progressBar = document.getElementById('docOcrProgressBar');
+            if (!progressText || !progressBar) return;
+
+            const labels = {
+                'loading tesseract core': 'Chargement du moteur OCR...',
+                'initializing tesseract': 'Initialisation...',
+                'loading language traineddata': 'Chargement du français...',
+                'initializing api': 'Préparation de l\'API...',
+                'recognizing text': 'Lecture du texte...'
+            };
+
+            const label = labels[m.status] || m.status;
+            const pct = Math.round((m.progress || 0) * 100);
+            progressText.textContent = `${label} ${pct}%`;
+            progressBar.style.width = pct + '%';
+        }
+
+        async function runOcrOnDocumentPhoto() {
+            if (!capturedDocPhotoDataUrl) {
+                showToast('Aucune photo à analyser', 'error');
+                return;
+            }
+
+            const ocrBtn = document.getElementById('docOcrBtn');
+            const progress = document.getElementById('docOcrProgress');
+            const result = document.getElementById('docOcrResult');
+            const error = document.getElementById('docOcrError');
+            const errorText = document.getElementById('docOcrErrorText');
+            const ocrText = document.getElementById('docOcrText');
+
+            // État "en cours"
+            ocrBtn.disabled = true;
+            ocrBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Analyse...';
+            ocrBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            progress.classList.remove('hidden');
+            result.classList.add('hidden');
+            error.classList.add('hidden');
+            document.getElementById('docOcrProgressBar').style.width = '0%';
+
+            try {
+                const worker = await getTesseractWorker();
+                const { data: { text } } = await worker.recognize(capturedDocPhotoDataUrl);
+
+                // Nettoyage basique du texte
+                const cleanedText = text
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\n{3,}/g, '\n\n') // Max 2 sauts de ligne consécutifs
+                    .trim();
+
+                if (!cleanedText) {
+                    throw new Error('Aucun texte détecté dans l\'image. Essayez une photo plus nette ou mieux éclairée.');
+                }
+
+                ocrText.value = cleanedText;
+                result.classList.remove('hidden');
+                progress.classList.add('hidden');
+                showToast('✅ Texte extrait avec succès', 'success');
+            } catch (err) {
+                console.error('[OCR]', err);
+                errorText.textContent = err.message || 'Erreur d\'analyse OCR.';
+                error.classList.remove('hidden');
+                progress.classList.add('hidden');
+            } finally {
+                ocrBtn.disabled = false;
+                ocrBtn.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> Relancer l\'OCR';
+                ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
 
 
