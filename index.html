@@ -711,12 +711,12 @@
     </div>
 
     <div id="addDocumentModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm p-4 print-hide">
-        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden fade-in flex flex-col" style="max-height: 92vh;">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                 <h3 class="font-bold text-slate-800">Numériser / Ajouter un Document</h3>
                 <button onclick="closeModal('addDocumentModal')" aria-label="Fermer" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <form onsubmit="handleAddDocument(event)" class="p-6 space-y-4">
+            <form onsubmit="handleAddDocument(event)" class="p-6 space-y-4 overflow-y-auto flex-1">
                
                                <div class="grid grid-cols-2 gap-3">
                     <button type="button" onclick="openCameraModal()" class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/50 rounded-2xl p-6 text-center cursor-pointer transition overflow-hidden group">
