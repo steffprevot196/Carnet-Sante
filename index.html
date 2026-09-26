@@ -780,6 +780,16 @@
                         </p>
                     </div>
 
+
+                    <!-- Analyse intelligente (remplie automatiquement) -->
+                    <div id="docOcrAnalysis" class="hidden bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                        <p class="text-[10px] uppercase tracking-wider text-emerald-700 font-bold mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-brain text-emerald-600"></i>
+                            Analyse intelligente
+                        </p>
+                        <div id="docOcrAnalysisContent"></div>
+                    </div>
+
                     <!-- Message d'erreur -->
                     <div id="docOcrError" class="hidden bg-rose-100 border border-rose-300 rounded-lg p-2 text-[11px] text-rose-800 flex items-start gap-2">
                         <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
@@ -2290,6 +2300,177 @@
         // ============ QR CODE D'URGENCE ============
         
         // ============================================
+        // ===== BASE DE MÉDICAMENTS COURANTS ==========
+        // ============================================
+        // Cette liste n'est pas exhaustive — elle couvre
+        // les médicaments les plus prescrits en France.
+        // Elle est utilisée uniquement pour la DÉTECTION,
+        // pas pour un diagnostic.
+        // ============================================
+        const COMMON_MEDICATIONS = [
+            // Antalgiques / Antipyrétiques
+            'doliprane', 'paracétamol', 'paracetamol', 'efferalgan', 'dafalgan',
+            'aspirine', 'aspégic', 'aspegic', 'ibuprofène', 'ibuprofene', 'advil', 'nurofen',
+            'nifluril', 'antalvic', 'dextropropoxyphène', 'tramadol', 'topalgic',
+            'codéine', 'codeine', 'codoliprane', 'lamaline', 'ixprim',
+            // Antibiotiques
+            'amoxicilline', 'clamoxyl', 'augmentin', 'amoxival',
+            'azithromycine', 'zithromax', 'clarythromycine', 'zeclar',
+            'céfixime', 'oroken', 'cefpodoxime', 'oracéfal', 'oracefal',
+            'ciprofloxacine', 'ciflox', 'ofloxacine', 'oflocet',
+            'doxycycline', 'vibramycine', 'pénicilline', 'penicilline',
+            'josacine', 'pyostacine', 'rocéphine', 'rocephine', 'claforan',
+            // Anti-inflammatoires
+            'prednisolone', 'solupred', 'prednisone', 'cortancyl',
+            'bétaméthasone', 'betamethasone', 'diprostone', 'diprostene',
+            'kétoprofène', 'ketoprofene', 'profénid', 'profenid',
+            'diclofénac', 'diclofenac', 'voltarène', 'voltarene',
+            'naproxène', 'naproxene', 'apranax',
+            'méloxicam', 'meloxicam', 'mobic',
+            'piroxicam', 'feldène', 'feldene',
+            // Antihistaminiques
+            'cétirizine', 'cetirizine', 'zyrtec', 'virlix',
+            'loratadine', 'clarityne', 'desloratadine', 'aerius',
+            'fexofénadine', 'fexofenadine', 'telfast',
+            'hydroxyzine', 'atarax', 'desloratadine',
+            'prométhazine', 'promethazine', 'phénergan', 'phenergan',
+            // Antitussifs / Sirops
+            'toplexil', 'oxomémazine', 'oxomemazine', 'hélicidine', 'helicidine',
+            'rhinathiol', 'fluimucil', 'mucomyst', 'exomuc', 'bronchokod',
+            'clarix', 'vicks', 'carbocistéine', 'carbocisteine',
+            // Antiémétiques
+            'vogalène', 'vogalene', 'métopimazine', 'metopimazine',
+            'motilium', 'dompéridone', 'domperidone',
+            'zophren', 'ondansétron', 'ondansetron',
+            'primpéran', 'primperan', 'métoclopramide', 'metoclopramide',
+            // Antispasmodiques
+            'spasfon', 'phloroglucinol', 'débridat', 'debridat', 'trimébutine', 'trimebutine',
+            'dicétel', 'dicitel', 'pinaverium',
+            // Antiacides / Anti-reflux
+            'gaviscon', 'maalox', 'rennie', 'inexium', 'oméprazole', 'omeprazole',
+            'mopral', 'ésoméprazole', 'esomeprazole', 'nexium',
+            'pantoprazole', 'inipomp', 'lansoprazole', 'ogast',
+            // Antidiarrhéiques
+            'imodium', 'lopéramide', 'loperamide', 'smecta', 'diosmectite',
+            'ultra-levure', 'ultralevure', 'ercéfuryl', 'ercefuryl', 'nifuroxazide',
+            // Laxatifs
+            'forlax', 'macrogol', 'movicol', 'duphalac', 'lactulose',
+            'microlax', 'normacol', 'suppositoire glycérine',
+            // Vitamines / Compléments
+            'vitamine d', 'vitamine c', 'vitamine b12', 'vitamine b9',
+            'uvédose', 'uvedose', 'zyma d', 'adrigyl', 'stérogyl', 'sterogyl',
+            'magnésium', 'magnesium', 'magné b6', 'magne b6',
+            'fer', 'tardyferon', 'ferrograd', 'fumafer',
+            'calcium', 'cacit', 'calcidose',
+            'zinc', 'effizinc',
+            'omega 3', 'oméga 3',
+            'probiotiques', 'lactibiane', 'ultra levure',
+            // Antiallergiques / Corticoïdes nasaux
+            'rhinocort', 'nasonex', 'avamy', 'flixonase',
+            'cromoglycate', 'lomusol',
+            // Antiseptiques
+            'bétadine', 'betadine', 'chlorhexidine', 'hibiscrub',
+            'hexomédine', 'hexomedine', 'dakin', 'eau oxygénée',
+            'alcool 70', 'alcool modifié',
+            // Antifongiques
+            'fongizone', 'nystatine', 'mycostatine', 'fluconazole', 'beagyne', 'triflucan',
+            'lamisil', 'terbinafine', 'loción', 'pevaryl', 'éconazole', 'econazole',
+            // Antiviraux
+            'aciclovir', 'zovirax', 'oseltamivir', 'tamiflu',
+            // Antihypertenseurs
+            'amlodipine', 'amlodipine', 'norvasc',
+            'ramipril', 'triatec', 'lisinopril', 'zestril',
+            'losartan', 'cozaar', 'valsartan', 'tareg',
+            'bisoprolol', 'cardensiel', 'aténolol', 'atenolol', 'tenormine',
+            'furosémide', 'furosemide', 'lasilix',
+            'hydrochlorothiazide', 'esidrex',
+            // Diabète
+            'metformine', 'metformine', 'glucophage', 'stagid',
+            'insuline', 'lantus', 'novorapid', 'humalog',
+            'gliclazide', 'diamicron', 'glimepiride', 'amarel',
+            // Thyroïde
+            'lévothyroxine', 'levothyroxine', 'levothyrox', 'euthyrox',
+            'carbimazole', 'neomercazole',
+            // Asthme / Allergie
+            'ventoline', 'salbutamol', 'terbutaline', 'bricanyl',
+            'seretide', 'symbicort', 'flixotide',
+            'montélukast', 'montelukast', 'singulair',
+            'cétirizine', 'cetirizine',
+            // Épilepsie
+            'dépakine', 'depakine', 'valproate', 'keppra', 'lévétiracétam', 'levetiracetam',
+            'lamictal', 'lamotrigine', 'tegretol', 'carbamazépine', 'carbamazepine',
+            // Psychotropes
+            'lexomil', 'bromazépam', 'bromazepam',
+            'xanax', 'alprazolam', 'valium', 'diazépam', 'diazepam',
+            'zolpidem', 'stilnox', 'zopiclone', 'imovane',
+            'sertraline', 'zoloft', 'fluoxétine', 'fluoxetine', 'prozac',
+            'paroxétine', 'paroxetine', 'deroxat', 'escitalopram', 'seroplex',
+            'venlafaxine', 'effexor', 'mirtazapine', 'norset',
+            // Contraception / Hormones
+            'lévonorgestrel', 'levonorgestrel', 'méliane', 'meliane',
+            'éthinylestradiol', 'ethinylestradiol',
+            'progestérone', 'progesterone', 'utrogestan',
+            // Autres
+            'smecta', 'gaviscon', 'maveral', 'menthe', 'héparine', 'heparine',
+            'lovenox', 'innohep', 'clexane',
+            'corticoïde', 'corticoide', 'hydrocortisone',
+            'sérum physiologique', 'serum physiologique', 'physiodose',
+            'dakin', 'biseptine'
+        ];
+
+        // Fréquences détectables
+        const FREQUENCY_PATTERNS = [
+            { regex: /\b(1|2|3|4)\s*(?:fois|f)\.?\s*(?:par|\/)\s*(?:jour|j)\b/i, group: 'freq_num' },
+            { regex: /\b(1|2|3|4)\s*x\s*(?:\/|par)\s*(?:jour|j)\b/i, group: 'freq_num' },
+            { regex: /\bmatin\b/i, group: 'matin' },
+            { regex: /\bmidi\b/i, group: 'midi' },
+            { regex: /\bsoir\b/i, group: 'soir' },
+            { regex: /\bcoucher\b/i, group: 'couché' },
+            { regex: /\bnuit\b/i, group: 'nuit' },
+            { regex: /\bavant\s+(?:les\s+)?repas\b/i, group: 'avant repas' },
+            { regex: /\baprès\s+(?:les\s+)?repas\b/i, group: 'après repas' },
+            { regex: /\bau coucher\b/i, group: 'au coucher' },
+            { regex: /\btoutes les\s+(\d+)\s*h(?:eures)?\b/i, group: 'toutes_les_h' }
+        ];
+
+        // Indications détectables
+        const INDICATION_KEYWORDS = {
+            'douleur': ['douleur', 'douloureux', 'antalgique', 'mal'],
+            'fièvre': ['fièvre', 'fievre', 'fébrile', 'febrile'],
+            'toux': ['toux', 'tousse', 'toussant'],
+            'rhume': ['rhume', 'nez qui coule', 'écoulement nasal'],
+            'angine': ['angine', 'mal de gorge', 'gorge'],
+            'otite': ['otite', 'oreille'],
+            'infection': ['infection', 'infectieux', 'bactérien', 'bacterien'],
+            'allergie': ['allergie', 'allergique', 'urticaire'],
+            'asthme': ['asthme', 'asthmatique', 'bronchite', 'bronchospasme'],
+            'diarrhée': ['diarrhée', 'diarrhee'],
+            'constipation': ['constipation'],
+            'nausée': ['nausée', 'nausee', 'vomissement', 'vomit'],
+            'insomnie': ['insomnie', 'sommeil'],
+            'anxiété': ['anxiété', 'anxiete', 'stress', 'angoiss'],
+            'dépression': ['dépression', 'depression'],
+            'hypertension': ['hypertension', 'tension'],
+            'diabète': ['diabète', 'diabete', 'glycémie', 'glycemie'],
+            'cholestérol': ['cholestérol', 'cholesterol'],
+            'grippe': ['grippe', 'grippal'],
+            'rhinite': ['rhinite', 'rhinopharyngite'],
+            'sinusite': ['sinusite'],
+            'cystite': ['cystite', 'urinaire'],
+            'gastro': ['gastro-entérite', 'gastro entérite', 'gastro'],
+            'vitamines': ['vitamine', 'carence', 'supplément', 'supplement'],
+            'contraception': ['contraception', 'contraceptif'],
+            'thyroïde': ['thyroïde', 'thyroide']
+        };
+
+        // Mots-clés de durée
+        const DURATION_PATTERNS = [
+            /\bpendant\s+(\d+)\s*(jours?|j|semaines?|sem|mois)\b/i,
+            /\b(\d+)\s*(jours?|j|semaines?|sem|mois)\s+(?:de|d')\s+traitement\b/i,
+            /\b(\d+)\s*(jours?|j)\b/i
+        ];
+
+        // ============================================
         // ===== DONNÉES OMS 2006 (0-5 ans) ===========
         // ============================================
         // Source : WHO Child Growth Standards 2006
@@ -3084,6 +3265,9 @@
                 ocrBtn.innerHTML = '<i class="fa-solid fa-bolt mr-1"></i> Extraire le texte';
                 ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
+                        // Masquer aussi l'analyse
+            const analysis = document.getElementById('docOcrAnalysis');
+            if (analysis) analysis.classList.add('hidden');
         }
 
         // Fallback : sélection de fichier classique
@@ -3215,6 +3399,226 @@
                 return;
             }
 
+        // ============================================
+        // ===== PARSING INTELLIGENT DU TEXTE OCR =====
+        // ============================================
+
+        // Normalise le texte pour comparaison
+        function normalizeText(txt) {
+            return txt
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Retire les accents
+                .replace(/\s+/g, ' ');
+        }
+
+        // Analyse le texte OCR et détecte médicaments, dosages, fréquences, indications
+        function parseOcrText(rawText) {
+            const normalized = normalizeText(rawText);
+            const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+            const detectedMeds = [];
+
+            // Pour chaque ligne, on cherche un médicament connu
+            lines.forEach(line => {
+                const lineNorm = normalizeText(line);
+
+                // Cherche un médicament connu dans la ligne
+                const foundMed = COMMON_MEDICATIONS.find(med => {
+                    const medNorm = normalizeText(med);
+                    // Match mot entier (avec frontières)
+                    const regex = new RegExp(`\\b${medNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+                    return regex.test(lineNorm);
+                });
+
+                if (!foundMed) return;
+
+                // Évite les doublons
+                if (detectedMeds.some(m => normalizeText(m.name).includes(normalizeText(foundMed)))) return;
+
+                // Extrait le nom complet (avec dosage) — cherche un pattern "Nom 500mg" ou "Nom 1g"
+                const dosageRegex = new RegExp(`(${foundMed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\s*(\\d+(?:[.,]\\d+)?\\s*(?:mg|g|ml|mcg|µg|UI|comprimé[s]?|gelule[s]?|gélule[s]?|sachet[s]?))?`, 'i');
+                const dosageMatch = line.match(dosageRegex);
+
+                let name = foundMed.charAt(0).toUpperCase() + foundMed.slice(1);
+                let dosage = '';
+
+                if (dosageMatch && dosageMatch[2]) {
+                    dosage = dosageMatch[2].trim();
+                } else {
+                    // Cherche un dosage ailleurs dans la ligne
+                    const anyDosage = line.match(/(\d+(?:[.,]\d+)?\s*(?:mg|g|ml|mcg|µg|UI))/i);
+                    if (anyDosage) dosage = anyDosage[1];
+                }
+
+                // Détecte la fréquence dans la ligne (ou la ligne suivante)
+                let frequency = '';
+                const lineToCheck = line + ' ' + (lines[lines.indexOf(line) + 1] || '');
+                for (const fp of FREQUENCY_PATTERNS) {
+                    const m = lineToCheck.match(fp.regex);
+                    if (m) {
+                        if (fp.group === 'freq_num') {
+                            frequency = `${m[1]}x/jour`;
+                        } else if (fp.group === 'toutes_les_h') {
+                            frequency = `toutes les ${m[1]}h`;
+                        } else {
+                            frequency = fp.group;
+                        }
+                        break;
+                    }
+                }
+
+                // Détecte la durée
+                let duration = '';
+                for (const dp of DURATION_PATTERNS) {
+                    const m = lineToCheck.match(dp);
+                    if (m) {
+                        duration = m[0].trim();
+                        break;
+                    }
+                }
+
+                // Détecte l'indication
+                let indication = '';
+                for (const [ind, keywords] of Object.entries(INDICATION_KEYWORDS)) {
+                    if (keywords.some(kw => normalized.includes(normalizeText(kw)))) {
+                        indication = ind;
+                        break;
+                    }
+                }
+
+                // Construit la posologie (fréquence + durée)
+                const posologie = [frequency, duration].filter(Boolean).join(' · ');
+
+                detectedMeds.push({
+                    name: dosage ? `${name} ${dosage}` : name,
+                    dosage: dosage,
+                    frequency: frequency,
+                    duration: duration,
+                    posology: posologie,
+                    indication: indication
+                });
+            });
+
+            return {
+                medications: detectedMeds,
+                totalLines: lines.length,
+                rawText: rawText
+            };
+        }
+
+        // Affiche l'analyse dans la modale
+        function renderOcrAnalysis() {
+            const container = document.getElementById('docOcrAnalysis');
+            const content = document.getElementById('docOcrAnalysisContent');
+            const textarea = document.getElementById('docOcrText');
+
+            if (!container || !content || !textarea) return;
+
+            const text = textarea.value.trim();
+            if (!text) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            const analysis = parseOcrText(text);
+
+            if (analysis.medications.length === 0) {
+                content.innerHTML = `
+                    <div class="bg-slate-50 rounded-lg p-3 text-xs text-slate-500 italic">
+                        <i class="fa-solid fa-info-circle mr-1"></i>
+                        Aucun médicament détecté automatiquement. Vous pouvez saisir manuellement les traitements dans la fiche de liaison.
+                    </div>
+                `;
+                container.classList.remove('hidden');
+                return;
+            }
+
+            content.innerHTML = `
+                <div class="mb-2 text-xs font-bold text-emerald-800">
+                    <i class="fa-solid fa-check-circle mr-1"></i>
+                    ${analysis.medications.length} médicament${analysis.medications.length > 1 ? 's' : ''} détecté${analysis.medications.length > 1 ? 's' : ''}
+                </div>
+                <div class="space-y-2">
+                    ${analysis.medications.map(m => `
+                        <div class="bg-white rounded-lg border border-emerald-200 p-2.5">
+                            <p class="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-pills text-emerald-600"></i>
+                                ${esc(m.name)}
+                            </p>
+                            ${(m.posology || m.indication) ? `
+                                <div class="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+                                    ${m.posology ? `<span class="bg-indigo-50 text-indigo-700 font-semibold px-1.5 py-0.5 rounded">${esc(m.posology)}</span>` : ''}
+                                    ${m.indication ? `<span class="bg-amber-50 text-amber-700 font-semibold px-1.5 py-0.5 rounded">${esc(m.indication)}</span>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" onclick="applyOcrToLiaison()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i>
+                    Ajouter ${analysis.medications.length} traitement${analysis.medications.length > 1 ? 's' : ''} à la fiche de liaison
+                </button>
+                <p class="text-[10px] text-slate-400 italic mt-2 text-center">
+                    💡 Vous pourrez modifier ces traitements après import.
+                </p>
+            `;
+            container.classList.remove('hidden');
+        }
+
+        // Applique les médicaments détectés à la fiche de liaison
+        function applyOcrToLiaison() {
+            const textarea = document.getElementById('docOcrText');
+            if (!textarea) return;
+
+            const analysis = parseOcrText(textarea.value.trim());
+            if (analysis.medications.length === 0) {
+                showToast('Aucun médicament à ajouter', 'error');
+                return;
+            }
+
+            const data = getLiaisonData();
+            if (!data.medications) data.medications = [];
+
+            // Retire les lignes vides existantes
+            data.medications = data.medications.filter(m => m.name && m.name.trim());
+
+            // Ajoute les nouveaux (évite les doublons par nom)
+            let added = 0;
+            analysis.medications.forEach(m => {
+                const exists = data.medications.some(existing =>
+                    existing.name.toLowerCase().includes(m.name.toLowerCase()) ||
+                    m.name.toLowerCase().includes(existing.name.toLowerCase())
+                );
+                if (!exists) {
+                    data.medications.push({
+                        name: m.name,
+                        dosage: m.posology || '',
+                        indication: m.indication || ''
+                    });
+                    added++;
+                }
+            });
+
+            if (added === 0) {
+                showToast('Tous ces médicaments sont déjà dans votre fiche', 'info');
+                return;
+            }
+
+            data.updatedAt = new Date().toISOString();
+            saveState();
+            renderLiaison();
+
+            showToast(`✅ ${added} traitement${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} à la fiche de liaison`, 'success');
+
+            // Suggérer d'aller voir la fiche
+            setTimeout(() => {
+                if (confirm('Traitements ajoutés à la fiche de liaison. Voulez-vous y accéder maintenant ?')) {
+                    closeModal('addDocumentModal');
+                    switchView('liaison');
+                }
+            }, 500);
+        }
+
             const ocrBtn = document.getElementById('docOcrBtn');
             const progress = document.getElementById('docOcrProgress');
             const result = document.getElementById('docOcrResult');
@@ -3248,6 +3652,12 @@
                 ocrText.value = cleanedText;
                 result.classList.remove('hidden');
                 progress.classList.add('hidden');
+                // Analyse intelligente automatique
+                renderOcrAnalysis();
+                // Faire défiler vers le résultat sur mobile
+                setTimeout(() => {
+                    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
                 showToast('✅ Texte extrait avec succès', 'success');
             } catch (err) {
                 console.error('[OCR]', err);
@@ -3951,6 +4361,23 @@
                     });
                 }
             });
+
+            // Relance l'analyse quand l'utilisateur corrige le texte OCR
+            const ocrTextarea = document.getElementById('docOcrText');
+            if (ocrTextarea) {
+                let ocrAnalysisTimer = null;
+                ocrTextarea.addEventListener('input', () => {
+                    clearTimeout(ocrAnalysisTimer);
+                    ocrAnalysisTimer = setTimeout(() => {
+                        if (ocrTextarea.value.trim().length > 10) {
+                            renderOcrAnalysis();
+                        } else {
+                            const analysis = document.getElementById('docOcrAnalysis');
+                            if (analysis) analysis.classList.add('hidden');
+                        }
+                    }, 800); // 800ms après la dernière frappe
+                });
+            }
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
