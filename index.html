@@ -173,7 +173,7 @@
                 <a href="#" onclick="switchView('dashboard'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-chart-pie w-6 text-indigo-600"></i> Tableau de bord</a>
                 <a href="#" onclick="switchView('growth'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-child-reaching w-6 text-indigo-600"></i> Croissance & OMS</a>
                 
-                                <a href="#" onclick="switchView('compare'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-code-compare w-6 text-indigo-600"></i> Comparer les profils</a>
+                                <a href="#" onclick="toggleMobileMenu(); switchView('compare'); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-code-compare w-6 text-indigo-600"></i> Comparer les profils</a>
                 
                 <a href="#" onclick="switchView('documents'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-folder-open w-6 text-indigo-600"></i> Documents & Scanner</a>
                 <a href="#" onclick="switchView('appointments'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-calendar-check w-6 text-indigo-600"></i> Rendez-vous</a>
@@ -1669,44 +1669,47 @@
             renderCompareChart();
         }
 
-        // Rendu principal de la vue Compare
-        function renderCompare() {
-            if (!document.getElementById('view-compare')) return;
+// Rendu principal de la vue Compare
+function renderCompare() {
+    const viewEl = document.getElementById('view-compare');
+    if (!viewEl) return;
 
-            renderCompareProfileSelectors();
+    // 1. Remplir les sélecteurs EN PREMIER
+    renderCompareProfileSelectors();
 
-            const [pid1, pid2] = getCompareProfileIds();
-            const warning = document.getElementById('compareWarning');
+    // 2. Récupérer les IDs sélectionnés
+    const [pid1, pid2] = getCompareProfileIds();
+    const warning = document.getElementById('compareWarning');
 
-            if (!pid1 || !pid2) {
-                if (warning) {
-                    warning.classList.remove('hidden');
-                    warning.textContent = 'Sélectionnez au moins deux profils pour comparer (créez-en un nouveau si nécessaire).';
-                }
-                renderCompareIdentityCards(null, null);
-                renderCompareChart();
-                renderCompareAppointments(null, null);
-                renderCompareMilestones(null, null);
-                return;
-            }
-
-            if (pid1 === pid2) {
-                if (warning) {
-                    warning.classList.remove('hidden');
-                    warning.textContent = 'Vous avez sélectionné le même profil deux fois. Choisissez deux profils différents pour comparer.';
-                }
-            } else {
-                if (warning) warning.classList.add('hidden');
-            }
-
-            const p1 = appState.profiles.find(p => p.id === pid1);
-            const p2 = appState.profiles.find(p => p.id === pid2);
-
-            renderCompareIdentityCards(p1, p2);
-            renderCompareChart();
-            renderCompareAppointments(p1, p2);
-            renderCompareMilestones(p1, p2);
+    if (!pid1 || !pid2) {
+        if (warning) {
+            warning.classList.remove('hidden');
+            warning.textContent = 'Sélectionnez au moins deux profils pour comparer (créez-en un nouveau si nécessaire).';
         }
+        renderCompareIdentityCards(null, null);
+        renderCompareChart();
+        renderCompareAppointments(null, null);
+        renderCompareMilestones(null, null);
+        return;
+    }
+
+    if (pid1 === pid2) {
+        if (warning) {
+            warning.classList.remove('hidden');
+            warning.textContent = 'Vous avez sélectionné le même profil deux fois. Choisissez deux profils différents pour comparer.';
+        }
+    } else {
+        if (warning) warning.classList.add('hidden');
+    }
+
+    const p1 = appState.profiles.find(p => p.id === pid1);
+    const p2 = appState.profiles.find(p => p.id === pid2);
+
+    renderCompareIdentityCards(p1, p2);
+    renderCompareChart();
+    renderCompareAppointments(p1, p2);
+    renderCompareMilestones(p1, p2);
+}
 
         // Cartes identité des deux profils
         function renderCompareIdentityCards(p1, p2) {
