@@ -1161,6 +1161,23 @@
                 if (elBadge) elBadge.innerHTML = '<i class="fa-solid fa-clock"></i> Jamais effectuée';
                 return;
             }
+            
+                    // Calcule et affiche l'espace localStorage utilisé
+        function updateStorageUsage() {
+            try {
+                const total = Object.keys(localStorage).reduce((sum, key) => {
+                    return sum + (localStorage.getItem(key) || '').length;
+                }, 0);
+                const totalKB = Math.round(total * 0.75 / 1024);
+                const totalMB = (totalKB / 1024).toFixed(2);
+                const percent = Math.min(100, Math.round(totalKB / 5120 * 100)); // 5 Mo = 5120 Ko
+
+                return { totalKB, totalMB, percent };
+            } catch (e) {
+                return { totalKB: 0, totalMB: '0', percent: 0 };
+            }
+        }
+            
             const dt = new Date(appState.lastAutoBackup);
             const formatted = dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' à ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
             if (elSidebar) elSidebar.innerText = 'Dernière : ' + formatted;
@@ -3154,7 +3171,82 @@
             if (video) video.srcObject = null;
         }
 
-        function capturePhoto() {
+                // ============================================
+        // ===== COMPRESSION AUTOMATIQUE DES PHOTOS ====
+        // ============================================
+        // Objectif : réduire la taille des photos pour
+        // économiser l'espace localStorage (5 Mo max).
+        // Stratégie : redimensionner à max 1280px + JPEG 0.7
+        // ============================================
+
+        async function compressPhoto(dataUrl, options = {}) {
+            const {
+                maxWidth = 1280,
+                maxHeight = 1280,
+                quality = 0.7
+            } = options;
+
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        let { width, height } = img;
+
+                        // Calcul du redimensionnement proportionnel
+                        if (width > maxWidth || height > maxHeight) {
+                            const ratio = Math.min(maxWidth / width, maxHeight / height);
+                            width = Math.round(width * ratio);
+                            height = Math.round(height * ratio);
+                        }
+
+                        // Dessiner l'image redimensionnée sur un canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+
+                        // Fond blanc (pour éviter la transparence sur PNG convertis)
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, width, height);
+
+                        // Amélioration de la qualité de réduction
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Compression JPEG
+                        const compressed = canvas.toDataURL('image/jpeg', quality);
+
+                        // Calcul du gain
+                        const originalKB = Math.round(dataUrl.length * 0.75 / 1024);
+                        const compressedKB = Math.round(compressed.length * 0.75 / 1024);
+                        const gain = originalKB > 0 ? Math.round((1 - compressedKB / originalKB) * 100) : 0;
+
+                        resolve({
+                            dataUrl: compressed,
+                            originalKB,
+                            compressedKB,
+                            gain,
+                            width,
+                            height
+                        });
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                img.onerror = () => reject(new Error('Image illisible'));
+                img.src = dataUrl;
+            });
+        }
+
+        // Formate la taille en Ko ou Mo lisible
+        function formatSize(kb) {
+            if (kb < 1024) return `${kb} Ko`;
+            return `${(kb / 1024).toFixed(1)} Mo`;
+        }
+
+        
+        async function capturePhoto() {
             const video = document.getElementById('cameraStream');
             const canvas = document.getElementById('cameraCanvas');
             const preview = document.getElementById('cameraPreview');
@@ -3168,24 +3260,49 @@
                 return;
             }
 
+
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Convertir en JPEG (compression ~85%) pour limiter la taille
-            cameraCapturedImage = canvas.toDataURL('image/jpeg', 0.85);
+            // Récupère l'image brute
+            const rawDataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
-            preview.src = cameraCapturedImage;
-            preview.classList.remove('hidden');
-            video.classList.add('hidden');
-            guide.classList.add('hidden');
-            captureBtn.classList.add('hidden');
-            retakeBtn.classList.remove('hidden');
-            useBtn.classList.remove('hidden');
+            // Compression automatique
+            try {
+                const result = await compressPhoto(rawDataUrl, {
+                    maxWidth: 1280,
+                    maxHeight: 1280,
+                    quality: 0.7
+                });
 
-            showToast('📸 Photo capturée', 'success');
+                cameraCapturedImage = result.dataUrl;
+
+                preview.src = cameraCapturedImage;
+                preview.classList.remove('hidden');
+                video.classList.add('hidden');
+                guide.classList.add('hidden');
+                captureBtn.classList.add('hidden');
+                retakeBtn.classList.remove('hidden');
+                useBtn.classList.remove('hidden');
+
+                showToast(`📸 Photo compressée : ${formatSize(result.originalKB)} → ${formatSize(result.compressedKB)} (-${result.gain}%)`, 'success');
+            } catch (err) {
+                console.error('[Compression]', err);
+                // Fallback : utilise la version brute si la compression échoue
+                cameraCapturedImage = rawDataUrl;
+                preview.src = cameraCapturedImage;
+                preview.classList.remove('hidden');
+                video.classList.add('hidden');
+                guide.classList.add('hidden');
+                captureBtn.classList.add('hidden');
+                retakeBtn.classList.remove('hidden');
+                useBtn.classList.remove('hidden');
+                showToast('📸 Photo capturée (compression échouée)', 'info');
+            }
         }
+
 
         function retakePhoto() {
             const video = document.getElementById('cameraStream');
@@ -3275,19 +3392,45 @@
             document.getElementById('docFileInput').click();
         }
 
-        function handleDocFileSelected(event) {
+
+        async function handleDocFileSelected(event) {
             const file = event.target.files[0];
             if (!file) return;
 
+            const isPdf = file.type === 'application/pdf';
+            const isImage = file.type.startsWith('image/');
+
             const reader = new FileReader();
-            reader.onload = function(e) {
-                capturedDocPhotoDataUrl = e.target.result;
+            reader.onload = async function(e) {
+                let finalDataUrl = e.target.result;
+                let toastMessage = '✅ Fichier chargé';
+
+                // Compresse uniquement les images
+                if (isImage) {
+                    try {
+                        const result = await compressPhoto(finalDataUrl, {
+                            maxWidth: 1600,
+                            maxHeight: 1600,
+                            quality: 0.75
+                        });
+                        finalDataUrl = result.dataUrl;
+                        toastMessage = `✅ Image compressée : ${formatSize(result.originalKB)} → ${formatSize(result.compressedKB)} (-${result.gain}%)`;
+                    } catch (err) {
+                        console.warn('[Compression]', err);
+                        // Garde la version originale en cas d'échec
+                    }
+                } else if (isPdf) {
+                    // Les PDF ne sont pas compressés (ils sont déjà efficaces)
+                    toastMessage = `✅ PDF chargé (${formatSize(Math.round(file.size / 1024))})`;
+                }
+
+                capturedDocPhotoDataUrl = finalDataUrl;
                 const container = document.getElementById('docPhotoPreview');
                 const thumb = document.getElementById('docPhotoThumb');
                 thumb.src = capturedDocPhotoDataUrl;
                 container.classList.remove('hidden');
 
-                               const titleInput = document.getElementById('docTitle');
+                const titleInput = document.getElementById('docTitle');
                 if (titleInput && !titleInput.value) {
                     titleInput.value = file.name.replace(/\.[^/.]+$/, '');
                 }
@@ -3297,13 +3440,12 @@
                 if (ocrSection) ocrSection.classList.remove('hidden');
                 resetOcrState();
 
-                showToast('✅ Fichier chargé', 'success');
-
-                showToast('✅ Fichier chargé', 'success');
+                showToast(toastMessage, 'success');
             };
             reader.readAsDataURL(file);
             event.target.value = '';
         }
+
 
                 function viewDocumentPhoto(docId) {
             const recs = getCurrentRecords();
@@ -4060,6 +4202,9 @@
         // Met à jour l'affichage complet du panneau de sync
         async function updateSyncPanel() {
             const statusText = document.getElementById('syncStatusText');
+                        // Afficher l'espace utilisé dans le texte de statut
+            const usage = updateStorageUsage();
+            const storageInfo = ` • Stockage : ${usage.totalMB} Mo (${usage.percent}%)`;
             const localDateEl = document.getElementById('syncLocalDate');
             const driveDateEl = document.getElementById('syncDriveDate');
             const hintEl = document.getElementById('syncHint');
@@ -4077,7 +4222,7 @@
             // Si Google pas configuré → afficher bouton "Autoriser"
             const clientId = getGoogleClientId();
             if (!clientId) {
-                statusText.textContent = 'Google Drive non configuré';
+                statusText.textContent = 'Google Drive non configuré' + storageInfo;
                 driveDateEl.textContent = '--';
                 hintEl.classList.add('hidden');
                 authBtn.classList.remove('hidden');
@@ -4092,7 +4237,7 @@
 
             // Google configuré mais pas connecté
             if (!isGoogleTokenValid()) {
-                statusText.textContent = 'Connectez Google pour synchroniser';
+                statusText.textContent = 'Connectez Google pour synchroniser' + storageInfo;
                 driveDateEl.textContent = '(non connecté)';
                 hintEl.classList.add('hidden');
                 authBtn.classList.remove('hidden');
@@ -4125,26 +4270,26 @@
             const driveTime = driveInfo ? new Date(driveInfo.date).getTime() : 0;
 
             if (!driveInfo && !localDate) {
-                statusText.textContent = 'Prêt à synchroniser';
+                statusText.textContent = 'Prêt à synchroniser' + storageInfo;
                 hintEl.classList.add('hidden');
             } else if (!driveInfo) {
-                statusText.textContent = 'Aucune sauvegarde Drive';
+                statusText.textContent = 'Aucune sauvegarde Drive' + storageInfo;
                 hintEl.classList.remove('hidden');
                 hintText.textContent = 'Vous avez des données locales mais rien sur Drive. Cliquez sur "Envoyer vers Drive" pour créer votre première sauvegarde.';
             } else if (!localDate) {
-                statusText.textContent = 'Drive plus récent que local';
+                statusText.textContent = 'Drive plus récent que local' + storageInfo;
                 hintEl.classList.remove('hidden');
                 hintText.textContent = 'Vos données Drive sont plus récentes. Cliquez sur "Charger depuis Drive" pour les récupérer.';
             } else if (Math.abs(localTime - driveTime) < 60000) {
                 // Moins d'une minute d'écart → considérés synchronisés
-                statusText.textContent = '✅ Synchronisé';
+                statusText.textContent = '✅ Synchronisé' + storageInfo;
                 hintEl.classList.add('hidden');
             } else if (localTime > driveTime) {
-                statusText.textContent = '⚠️ Local plus récent que Drive';
+                statusText.textContent = '⚠️ Local plus récent que Drive' + storageInfo;
                 hintEl.classList.remove('hidden');
                 hintText.textContent = 'Vous avez modifié des données localement. Cliquez sur "Envoyer vers Drive" pour les sauvegarder.';
             } else {
-                statusText.textContent = '⚠️ Drive plus récent que Local';
+                statusText.textContent = '⚠️ Drive plus récent que Local' + storageInfo;
                 hintEl.classList.remove('hidden');
                 hintText.textContent = 'Le Drive contient des données plus récentes. Cliquez sur "Charger depuis Drive" pour les récupérer.';
             }
