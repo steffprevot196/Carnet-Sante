@@ -2,8 +2,9 @@
   "name": "SantéPro — Carnet de Santé Intelligent",
   "short_name": "SantéPro",
   "description": "Carnet de santé numérique avec suivi de croissance OMS, documents médicaux, OCR et sauvegarde chiffrée.",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/Carnet-Sante/index.html",
+  "scope": "/Carnet-Sante/",
+  "id": "/Carnet-Sante/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f8fafc",
@@ -29,19 +30,19 @@
     {
       "name": "Ajouter une mesure",
       "short_name": "Mesure",
-      "url": "./index.html?action=growth",
+      "url": "/Carnet-Sante/index.html?action=growth",
       "icons": [{ "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMTYiIGZpbGw9IiMxMGI5ODEiLz48L3N2Zz4=", "sizes": "96x96" }]
     },
     {
       "name": "Fiche d'urgence",
       "short_name": "Urgence",
-      "url": "./index.html?action=urgency",
+      "url": "/Carnet-Sante/index.html?action=urgency",
       "icons": [{ "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMTYiIGZpbGw9IiNlMTFkNDgiLz48L3N2Zz4=", "sizes": "96x96" }]
     },
     {
       "name": "Ajouter un document",
       "short_name": "Scanner",
-      "url": "./index.html?action=scan",
+      "url": "/Carnet-Sante/index.html?action=scan",
       "icons": [{ "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiI+PHJlY3Qgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMTYiIGZpbGw9IiM2MzY2ZjEiLz48L3N2Zz4=", "sizes": "96x96" }]
     }
   ]
