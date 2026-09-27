@@ -2,8 +2,23 @@
 <html lang="fr" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Carnet de Santé & Suivi de Développement Intelligent</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/Carnet-Sante/manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="description" content="Carnet de santé numérique avec suivi de croissance OMS, documents médicaux, OCR et sauvegarde chiffrée.">
+    
+    <!-- iOS / Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SantéPro">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjMyIiBmaWxsPSIjNGY0NmU1Ii8+PHRleHQgeD0iOTYiIHk9IjEyMCIgZm9udC1zaXplPSI5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iYm9sZCI+4p2kPC90ZXh0Pjwvc3ZnPg==">
+    
+    <!-- Windows / Edge -->
+    <meta name="msapplication-TileColor" content="#4f46e5">
+    <meta name="msapplication-tap-highlight" content="no">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -89,6 +104,49 @@
 <body class="h-full text-slate-800 flex flex-col md:flex-row overflow-hidden antialiased">
 
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 print-hide"></div>
+
+    <!-- Bannière "Installer l'application" (PWA) -->
+    <div id="pwaInstallBanner" class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-sm z-40 bg-slate-900 text-white rounded-2xl shadow-2xl p-4 print-hide fade-in">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-lg shrink-0">
+                <i class="fa-solid fa-download"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold">Installer SantéPro</p>
+                <p class="text-[11px] text-slate-300 mt-0.5">Accès rapide + utilisation hors ligne.</p>
+                <div class="flex gap-2 mt-3">
+                    <button id="pwaInstallBtn" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg transition">
+                        <i class="fa-solid fa-plus mr-1"></i> Installer
+                    </button>
+                    <button id="pwaDismissBtn" class="text-xs bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1.5 rounded-lg transition">
+                        Plus tard
+                    </button>
+                </div>
+            </div>
+            <button onclick="dismissPwaBanner(true)" aria-label="Fermer" class="text-slate-400 hover:text-white p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bandeau "Nouvelle version disponible" -->
+    <div id="pwaUpdateBanner" class="hidden fixed top-4 left-4 right-4 md:left-auto md:right-6 md:max-w-sm z-40 bg-emerald-600 text-white rounded-xl shadow-2xl p-3 print-hide fade-in">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-arrow-up text-lg"></i>
+            <p class="text-xs font-bold flex-1">Nouvelle version disponible</p>
+            <button onclick="applyPwaUpdate()" class="text-xs bg-white text-emerald-700 font-bold px-3 py-1.5 rounded-lg">
+                Recharger
+            </button>
+        </div>
+    </div>
+
+    <!-- Indicateur hors ligne -->
+    <div id="offlineIndicator" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-amber-500 text-white rounded-full shadow-lg px-4 py-2 print-hide fade-in">
+        <p class="text-xs font-bold flex items-center gap-2">
+            <i class="fa-solid fa-wifi-slash"></i>
+            Mode hors ligne — Les données restent accessibles
+        </p>
+    </div>
 
     <aside class="w-72 bg-white border-r border-slate-200 hidden md:flex flex-col z-20 shrink-0 select-none">
         <div class="p-5 border-b border-slate-100 flex items-center gap-3">
@@ -5841,6 +5899,180 @@ function renderCompare() {
                     });
                 }
             });
+        });
+    </script>
+
+    <!-- ============================================
+         SERVICE WORKER + PWA
+         Hébergé sur GitHub Pages : /Carnet-Sante/
+         ============================================ -->
+    <script>
+        // --- CONSTANTE DE BASE (adapte au sous-dossier GitHub Pages) ---
+        const PWA_BASE_PATH = '/Carnet-Sante/';
+
+        // --- ÉTAT GLOBAL PWA ---
+        let pwaDeferredPrompt = null;
+        let swRegistration = null;
+        let swUpdateAvailable = false;
+
+        // --- ENREGISTREMENT DU SERVICE WORKER ---
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                console.warn('[PWA] Service Worker non supporté');
+                return;
+            }
+
+            if (location.protocol === 'file:') {
+                console.warn('[PWA] Service Worker inactif en mode file://');
+                return;
+            }
+
+            try {
+                swRegistration = await navigator.serviceWorker.register(PWA_BASE_PATH + 'sw.js', {
+                    scope: PWA_BASE_PATH
+                });
+                console.log('[PWA] Service Worker enregistré :', swRegistration.scope);
+
+                swRegistration.addEventListener('updatefound', () => {
+                    const newWorker = swRegistration.installing;
+                    if (!newWorker) return;
+
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            swUpdateAvailable = true;
+                            showPwaUpdateBanner();
+                        }
+                    });
+                });
+
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    console.log('[PWA] Message du SW :', event.data);
+                });
+
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (swUpdateAvailable) {
+                        window.location.reload();
+                    }
+                });
+
+            } catch (err) {
+                console.error('[PWA] Échec enregistrement SW :', err);
+            }
+        }
+
+        // --- BANNIÈRE D'INSTALLATION ---
+        function isPwaInstalled() {
+            if (window.matchMedia('(display-mode: standalone)').matches) return true;
+            if (window.navigator.standalone === true) return true;
+            return false;
+        }
+
+        function shouldShowPwaBanner() {
+            if (isPwaInstalled()) return false;
+            const dismissedAt = localStorage.getItem('santePro_pwaDismissedAt');
+            if (dismissedAt) {
+                const days = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+                if (days < 30) return false;
+            }
+            return true;
+        }
+
+        function showPwaInstallBanner() {
+            if (!shouldShowPwaBanner()) return;
+            const banner = document.getElementById('pwaInstallBanner');
+            if (banner) banner.classList.remove('hidden');
+        }
+
+        function dismissPwaBanner(permanent = false) {
+            const banner = document.getElementById('pwaInstallBanner');
+            if (banner) banner.classList.add('hidden');
+            if (permanent) {
+                localStorage.setItem('santePro_pwaDismissedAt', Date.now().toString());
+            }
+        }
+
+        // --- CAPTURE DE L'ÉVÉNEMENT beforeinstallprompt ---
+        window.addEventListener('beforeinstallprompt', (event) => {
+            console.log('[PWA] Événement beforeinstallprompt capturé');
+            event.preventDefault();
+            pwaDeferredPrompt = event;
+            setTimeout(showPwaInstallBanner, 3000);
+        });
+
+        // --- BOUTON "INSTALLER" ---
+        document.addEventListener('click', async (e) => {
+            if (e.target.closest('#pwaInstallBtn')) {
+                if (!pwaDeferredPrompt) {
+                    showToast('Sur iOS : Partager ⬆ → "Sur l\'écran d\'accueil"', 'info');
+                    return;
+                }
+                pwaDeferredPrompt.prompt();
+                const { outcome } = await pwaDeferredPrompt.userChoice;
+                console.log('[PWA] Choix utilisateur :', outcome);
+                if (outcome === 'accepted') {
+                    showToast('✅ Application installée !', 'success');
+                }
+                pwaDeferredPrompt = null;
+                dismissPwaBanner(false);
+            }
+            if (e.target.closest('#pwaDismissBtn')) {
+                dismissPwaBanner(true);
+            }
+        });
+
+        // --- DÉTECTION "APP INSTALLÉE" ---
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App installée');
+            showToast('✅ SantéPro installée sur votre appareil', 'success');
+            dismissPwaBanner(false);
+        });
+
+        // --- BANNIÈRE DE MISE À JOUR ---
+        function showPwaUpdateBanner() {
+            const banner = document.getElementById('pwaUpdateBanner');
+            if (banner) banner.classList.remove('hidden');
+        }
+
+        function applyPwaUpdate() {
+            if (!swRegistration || !swRegistration.waiting) {
+                window.location.reload();
+                return;
+            }
+            swRegistration.waiting.postMessage('SKIP_WAITING');
+        }
+
+        // --- INDICATEUR HORS LIGNE ---
+        function updateOnlineStatus() {
+            const indicator = document.getElementById('offlineIndicator');
+            if (!indicator) return;
+            if (navigator.onLine) {
+                indicator.classList.add('hidden');
+            } else {
+                indicator.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        // --- INITIALISATION PWA ---
+        window.addEventListener('load', () => {
+            registerServiceWorker();
+            updateOnlineStatus();
+        });
+
+        // --- RACCOURCIS D'APP (?action=...) ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(location.search);
+            const action = params.get('action');
+            if (!action) return;
+
+            setTimeout(() => {
+                if (action === 'growth') openModal('addGrowthModal');
+                if (action === 'scan') openModal('addDocumentModal');
+                if (action === 'urgency') generateAndShowUrgencySheet();
+                history.replaceState({}, '', location.pathname);
+            }, 800);
         });
     </script>
 </body>
