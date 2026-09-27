@@ -1153,6 +1153,22 @@
             showToast('Sauvegarde forcée et enregistrée.', 'success');
         }
 
+        // Calcule et retourne l'espace localStorage utilisé (FONCTION GLOBALE)
+        function updateStorageUsage() {
+            try {
+                const total = Object.keys(localStorage).reduce((sum, key) => {
+                    return sum + (localStorage.getItem(key) || '').length;
+                }, 0);
+                const totalKB = Math.round(total * 0.75 / 1024);
+                const totalMB = (totalKB / 1024).toFixed(2);
+                const percent = Math.min(100, Math.round(totalKB / 5120 * 100));
+
+                return { totalKB, totalMB, percent };
+            } catch (e) {
+                return { totalKB: 0, totalMB: '0', percent: 0 };
+            }
+        }
+
         function updateBackupStatusDisplay() {
             const elSidebar = document.getElementById('sidebarBackupStatus');
             const elBadge = document.getElementById('settingsBackupBadge');
@@ -1161,23 +1177,6 @@
                 if (elBadge) elBadge.innerHTML = '<i class="fa-solid fa-clock"></i> Jamais effectuée';
                 return;
             }
-            
-                    // Calcule et affiche l'espace localStorage utilisé
-        function updateStorageUsage() {
-            try {
-                const total = Object.keys(localStorage).reduce((sum, key) => {
-                    return sum + (localStorage.getItem(key) || '').length;
-                }, 0);
-                const totalKB = Math.round(total * 0.75 / 1024);
-                const totalMB = (totalKB / 1024).toFixed(2);
-                const percent = Math.min(100, Math.round(totalKB / 5120 * 100)); // 5 Mo = 5120 Ko
-
-                return { totalKB, totalMB, percent };
-            } catch (e) {
-                return { totalKB: 0, totalMB: '0', percent: 0 };
-            }
-        }
-            
             const dt = new Date(appState.lastAutoBackup);
             const formatted = dt.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' à ' + dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
             if (elSidebar) elSidebar.innerText = 'Dernière : ' + formatted;
