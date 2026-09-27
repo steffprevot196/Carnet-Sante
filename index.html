@@ -3393,56 +3393,12 @@
             progressBar.style.width = pct + '%';
         }
 
-        async function runOcrOnDocumentPhoto() {
+        
+                async function runOcrOnDocumentPhoto() {
             if (!capturedDocPhotoDataUrl) {
                 showToast('Aucune photo à analyser', 'error');
                 return;
             }
-
-
-
-            const data = getLiaisonData();
-            if (!data.medications) data.medications = [];
-
-            // Retire les lignes vides existantes
-            data.medications = data.medications.filter(m => m.name && m.name.trim());
-
-            // Ajoute les nouveaux (évite les doublons par nom)
-            let added = 0;
-            analysis.medications.forEach(m => {
-                const exists = data.medications.some(existing =>
-                    existing.name.toLowerCase().includes(m.name.toLowerCase()) ||
-                    m.name.toLowerCase().includes(existing.name.toLowerCase())
-                );
-                if (!exists) {
-                    data.medications.push({
-                        name: m.name,
-                        dosage: m.posology || '',
-                        indication: m.indication || ''
-                    });
-                    added++;
-                }
-            });
-
-            if (added === 0) {
-                showToast('Tous ces médicaments sont déjà dans votre fiche', 'info');
-                return;
-            }
-
-            data.updatedAt = new Date().toISOString();
-            saveState();
-            renderLiaison();
-
-            showToast(`✅ ${added} traitement${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} à la fiche de liaison`, 'success');
-
-            // Suggérer d'aller voir la fiche
-            setTimeout(() => {
-                if (confirm('Traitements ajoutés à la fiche de liaison. Voulez-vous y accéder maintenant ?')) {
-                    closeModal('addDocumentModal');
-                    switchView('liaison');
-                }
-            }, 500);
-        }
 
             const ocrBtn = document.getElementById('docOcrBtn');
             const progress = document.getElementById('docOcrProgress');
@@ -3464,10 +3420,9 @@
                 const worker = await getTesseractWorker();
                 const { data: { text } } = await worker.recognize(capturedDocPhotoDataUrl);
 
-                // Nettoyage basique du texte
                 const cleanedText = text
                     .replace(/\r\n/g, '\n')
-                    .replace(/\n{3,}/g, '\n\n') // Max 2 sauts de ligne consécutifs
+                    .replace(/\n{3,}/g, '\n\n')
                     .trim();
 
                 if (!cleanedText) {
@@ -3477,9 +3432,7 @@
                 ocrText.value = cleanedText;
                 result.classList.remove('hidden');
                 progress.classList.add('hidden');
-                // Analyse intelligente automatique
                 renderOcrAnalysis();
-                // Faire défiler vers le résultat sur mobile
                 setTimeout(() => {
                     result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }, 100);
@@ -3495,43 +3448,37 @@
                 ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
+
         // ============================================
         // ===== PARSING INTELLIGENT DU TEXTE OCR =====
         // ============================================
 
-        // Normalise le texte pour comparaison
         function normalizeText(txt) {
             return txt
                 .toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Retire les accents
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
                 .replace(/\s+/g, ' ');
         }
 
-        // Analyse le texte OCR et détecte médicaments, dosages, fréquences, indications
         function parseOcrText(rawText) {
             const normalized = normalizeText(rawText);
             const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
             const detectedMeds = [];
 
-            // Pour chaque ligne, on cherche un médicament connu
             lines.forEach(line => {
                 const lineNorm = normalizeText(line);
 
-                // Cherche un médicament connu dans la ligne
                 const foundMed = COMMON_MEDICATIONS.find(med => {
                     const medNorm = normalizeText(med);
-                    // Match mot entier (avec frontières)
                     const regex = new RegExp(`\\b${medNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
                     return regex.test(lineNorm);
                 });
 
                 if (!foundMed) return;
 
-                // Évite les doublons
                 if (detectedMeds.some(m => normalizeText(m.name).includes(normalizeText(foundMed)))) return;
 
-                // Extrait le nom complet (avec dosage) — cherche un pattern "Nom 500mg" ou "Nom 1g"
                 const dosageRegex = new RegExp(`(${foundMed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\s*(\\d+(?:[.,]\\d+)?\\s*(?:mg|g|ml|mcg|µg|UI|comprimé[s]?|gelule[s]?|gélule[s]?|sachet[s]?))?`, 'i');
                 const dosageMatch = line.match(dosageRegex);
 
@@ -3541,12 +3488,10 @@
                 if (dosageMatch && dosageMatch[2]) {
                     dosage = dosageMatch[2].trim();
                 } else {
-                    // Cherche un dosage ailleurs dans la ligne
                     const anyDosage = line.match(/(\d+(?:[.,]\d+)?\s*(?:mg|g|ml|mcg|µg|UI))/i);
                     if (anyDosage) dosage = anyDosage[1];
                 }
 
-                // Détecte la fréquence dans la ligne (ou la ligne suivante)
                 let frequency = '';
                 const lineToCheck = line + ' ' + (lines[lines.indexOf(line) + 1] || '');
                 for (const fp of FREQUENCY_PATTERNS) {
@@ -3563,7 +3508,6 @@
                     }
                 }
 
-                // Détecte la durée
                 let duration = '';
                 for (const dp of DURATION_PATTERNS) {
                     const m = lineToCheck.match(dp);
@@ -3573,7 +3517,6 @@
                     }
                 }
 
-                // Détecte l'indication
                 let indication = '';
                 for (const [ind, keywords] of Object.entries(INDICATION_KEYWORDS)) {
                     if (keywords.some(kw => normalized.includes(normalizeText(kw)))) {
@@ -3582,7 +3525,6 @@
                     }
                 }
 
-                // Construit la posologie (fréquence + durée)
                 const posologie = [frequency, duration].filter(Boolean).join(' · ');
 
                 detectedMeds.push({
@@ -3602,7 +3544,6 @@
             };
         }
 
-        // Affiche l'analyse dans la modale
         function renderOcrAnalysis() {
             const container = document.getElementById('docOcrAnalysis');
             const content = document.getElementById('docOcrAnalysisContent');
@@ -3661,7 +3602,6 @@
             container.classList.remove('hidden');
         }
 
-        // Applique les médicaments détectés à la fiche de liaison
         function applyOcrToLiaison() {
             const textarea = document.getElementById('docOcrText');
             if (!textarea) return;
@@ -3672,6 +3612,49 @@
                 return;
             }
 
+            const data = getLiaisonData();
+            if (!data.medications) data.medications = [];
+
+            data.medications = data.medications.filter(m => m.name && m.name.trim());
+
+            let added = 0;
+            analysis.medications.forEach(m => {
+                const exists = data.medications.some(existing =>
+                    existing.name.toLowerCase().includes(m.name.toLowerCase()) ||
+                    m.name.toLowerCase().includes(existing.name.toLowerCase())
+                );
+                if (!exists) {
+                    data.medications.push({
+                        name: m.name,
+                        dosage: m.posology || '',
+                        indication: m.indication || ''
+                    });
+                    added++;
+                }
+            });
+
+            if (added === 0) {
+                showToast('Tous ces médicaments sont déjà dans votre fiche', 'info');
+                return;
+            }
+
+            data.updatedAt = new Date().toISOString();
+            saveState();
+            renderLiaison();
+
+            showToast(`✅ ${added} traitement${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} à la fiche de liaison`, 'success');
+
+            setTimeout(() => {
+                if (confirm('Traitements ajoutés à la fiche de liaison. Voulez-vous y accéder maintenant ?')) {
+                    closeModal('addDocumentModal');
+                    switchView('liaison');
+                }
+            }, 500);
+        }
+
+        
+        
+        
         // ============================================
         // ============ GOOGLE DRIVE CHIFFRÉ ==========
         // ============================================
