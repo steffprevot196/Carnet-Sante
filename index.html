@@ -127,6 +127,7 @@
             <a href="#" onclick="switchView('growth'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="growth"><i class="fa-solid fa-child-reaching w-5 text-center text-base"></i> Croissance & OMS</a>
             
                         <a href="#" onclick="switchView('compare'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="compare"><i class="fa-solid fa-code-compare w-5 text-center text-base"></i> Comparer les profils</a>
+                                    <a href="#" onclick="switchView('trends'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="trends"><i class="fa-solid fa-chart-line w-5 text-center text-base"></i> Tendances</a>
             
             <a href="#" onclick="switchView('documents'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="documents"><i class="fa-solid fa-folder-open w-5 text-center text-base"></i> Documents & Scanner</a>
             <a href="#" onclick="switchView('appointments'); return false;" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:bg-slate-100 transition-all" data-view="appointments"><i class="fa-solid fa-calendar-check w-5 text-center text-base"></i> Rendez-vous & Rappels</a>
@@ -173,7 +174,7 @@
                 <a href="#" onclick="switchView('dashboard'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-chart-pie w-6 text-indigo-600"></i> Tableau de bord</a>
                 <a href="#" onclick="switchView('growth'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-child-reaching w-6 text-indigo-600"></i> Croissance & OMS</a>
                 
-                                <a href="#" onclick="toggleMobileMenu(); switchView('compare'); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-code-compare w-6 text-indigo-600"></i> Comparer les profils</a>
+                                                <a href="#" onclick="toggleMobileMenu(); switchView('trends'); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-chart-line w-6 text-indigo-600"></i> Tendances</a>
                 
                 <a href="#" onclick="switchView('documents'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-folder-open w-6 text-indigo-600"></i> Documents & Scanner</a>
                 <a href="#" onclick="switchView('appointments'); toggleMobileMenu(); return false;" class="block p-3 rounded-xl hover:bg-slate-100 font-medium text-slate-700"><i class="fa-solid fa-calendar-check w-6 text-indigo-600"></i> Rendez-vous</a>
@@ -266,9 +267,9 @@
                     <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-ruler-vertical"></i></div>
                     <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Taille</p><p class="text-lg font-black text-slate-800 truncate" id="statHeight">-- cm</p></div>
                 </div>
-                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-shield-virus"></i></div>
-                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vaccinations</p><p class="text-sm font-bold text-slate-800 truncate" id="statVaccines">--</p></div>
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-calculator"></i></div>
+                    <div class="min-w-0"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">IMC & Corpulence</p><p class="text-sm font-bold text-slate-800 truncate" id="statVaccines">--</p></div>
                 </div>
             </div>
 
@@ -424,7 +425,93 @@
                 </div>
             </div>
         </div>
+        <!-- VIEW: TENDANCES -->
+        <div id="view-trends" class="view-section hidden fade-in space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900">Statistiques & Tendances</h2>
+                    <p class="text-sm text-slate-500">Vitesse de croissance, moyennes et évolutions pour <span id="trendsProfileName" class="font-semibold text-indigo-600">--</span></p>
+                </div>
+            </div>
 
+            <!-- Cartes de synthèse -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-weight-scale"></i></div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Poids moyen</p>
+                    </div>
+                    <p class="text-lg font-black text-slate-800" id="trendsAvgWeight">--</p>
+                    <p class="text-[11px] text-slate-500 mt-1" id="trendsWeightRange">--</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-ruler-vertical"></i></div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Taille moyenne</p>
+                    </div>
+                    <p class="text-lg font-black text-slate-800" id="trendsAvgHeight">--</p>
+                    <p class="text-[11px] text-slate-500 mt-1" id="trendsHeightRange">--</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-gauge-high"></i></div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vitesse poids</p>
+                    </div>
+                    <p class="text-lg font-black text-slate-800" id="trendsWeightVelocity">--</p>
+                    <p class="text-[11px] text-slate-500 mt-1" id="trendsWeightVelocityInfo">--</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vitesse taille</p>
+                    </div>
+                    <p class="text-lg font-black text-slate-800" id="trendsHeightVelocity">--</p>
+                    <p class="text-[11px] text-slate-500 mt-1" id="trendsHeightVelocityInfo">--</p>
+                </div>
+            </div>
+
+            <!-- Graphique évolution -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <i class="fa-solid fa-chart-area text-indigo-600"></i>
+                        Évolution cumulée
+                    </h3>
+                    <div class="flex gap-1.5">
+                        <button onclick="setTrendsMetric('weight')" id="trendsBtnWeight" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white">Poids</button>
+                        <button onclick="setTrendsMetric('height')" id="trendsBtnHeight" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">Taille</button>
+                    </div>
+                </div>
+                <div class="relative h-72 md:h-80 w-full">
+                    <canvas id="trendsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tableau des variations -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                    <i class="fa-solid fa-table-list text-indigo-600"></i>
+                    <h3 class="font-bold text-slate-800 text-sm">Variations entre chaque mesure</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-400 uppercase text-[11px] font-bold tracking-wider border-b border-slate-100">
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Âge</th>
+                                <th class="p-3">Poids</th>
+                                <th class="p-3">Δ Poids</th>
+                                <th class="p-3">Taille</th>
+                                <th class="p-3">Δ Taille</th>
+                                <th class="p-3">PC</th>
+                                <th class="p-3">Δ PC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trendsVariationsTable" class="text-sm divide-y divide-slate-100 font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         <div id="view-documents" class="view-section hidden fade-in space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1337,7 +1424,8 @@
 
         	if (viewId === 'growth') setTimeout(renderGrowthChart, 60);
             if (viewId === 'liaison') setTimeout(renderLiaison, 30);
-            if (viewId === 'compare') setTimeout(renderCompare, 30);
+                        if (viewId === 'compare') setTimeout(renderCompare, 30);
+            if (viewId === 'trends') setTimeout(renderTrends, 30);
         }
 
         function toggleMobileMenu() {
@@ -1429,7 +1517,8 @@
             renderDocuments();
             renderAppointments();
             renderVaccinesAndMilestones();
-            renderLiaison();
+                        renderLiaison();
+            renderTrends();
             updateBackupStatusDisplay();
             // Sync du panneau (après un tick pour laisser le DOM se mettre à jour)
             if (typeof updateSyncPanel === 'function') {
@@ -1475,16 +1564,34 @@
                 } else {
                     hEl.innerText = hText;
                 }
-            } else {
+                        } else {
                 document.getElementById('statWeight').innerText = '-- kg';
                 document.getElementById('statHeight').innerText = '-- cm';
             }
    
-               // IMC dans le 4ème badge (remplace le compteur vaccins par défaut, optionnel)
-            // Ceci est purement indicatif — l'IMC seul ne suffit pas à évaluer un enfant.
-
-            const doneVac = recs.vaccines.filter(v => v.status === 'done').length;
-            document.getElementById('statVaccines').innerText = `${doneVac} / ${recs.vaccines.length} faits`;
+            // Classification IMC dans la 4ème carte (remplace le compteur vaccins)
+            if (sortedGrowth.length > 0) {
+                const latest = sortedGrowth[0];
+                const ageM = ageInMonths(profile.dob, latest.date);
+                if (latest.weight && latest.height) {
+                    const bmiVal = latest.weight / Math.pow(latest.height / 100, 2);
+                    const cls = classifyBMI(profile.gender, ageM, bmiVal);
+                    if (cls) {
+                        document.getElementById('statVaccines').innerHTML = 
+                            `<span class="text-[11px] ${cls.bg} ${cls.color} font-bold px-2 py-0.5 rounded">IMC ${bmiVal.toFixed(1)} ${cls.emoji}</span>` +
+                            `<br><span class="text-[10px] ${cls.color} font-semibold">${cls.label}</span>`;
+                    } else {
+                        document.getElementById('statVaccines').innerHTML = 
+                            `<span class="text-[11px] text-slate-600 font-bold">IMC ${bmiVal.toFixed(1)}</span>`;
+                    }
+                } else {
+                    const doneVac = recs.vaccines.filter(v => v.status === 'done').length;
+                    document.getElementById('statVaccines').innerText = `${doneVac} / ${recs.vaccines.length} faits`;
+                }
+            } else {
+                const doneVac = recs.vaccines.filter(v => v.status === 'done').length;
+                document.getElementById('statVaccines').innerText = `${doneVac} / ${recs.vaccines.length} faits`;
+            }
 
             const todayStr = new Date().toISOString().split('T')[0];
             const upcomingAppts = [...recs.appointments]
@@ -1582,7 +1689,12 @@
                     <td class="p-4 font-bold text-slate-800">${r.weight ? r.weight + ' kg' : '--'}${badgePercentile('weight', r.weight, r.date)}</td>
                     <td class="p-4 font-bold text-slate-800">${r.height ? r.height + ' cm' : '--'}${badgePercentile('height', r.height, r.date)}</td>
                     <td class="p-4 font-bold text-slate-800">${r.headCirc ? r.headCirc + ' cm' : '--'}${badgePercentile('headCirc', r.headCirc, r.date)}</td>
-                    <td class="p-4 font-bold text-slate-800">${bmi ? bmi.toFixed(1) : '--'}${bmi ? badgePercentile('bmi', bmi, r.date) : ''}</td>
+                                        <td class="p-4 font-bold text-slate-800">${bmi ? bmi.toFixed(1) : '--'}${bmi ? (() => {
+                        const ageM = ageInMonths(profile.dob, r.date);
+                        const cls = classifyBMI(profile.gender, ageM, bmi);
+                        if (!cls) return '';
+                        return `<span class="text-[10px] ${cls.bg} ${cls.color} font-bold px-1.5 py-0.5 rounded ml-1" title="${cls.label}">${cls.emoji} ${cls.label}</span>`;
+                    })() : ''}</td>
                     <td class="p-4 text-right"><button onclick="deleteGrowthRecord('${r.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>
                 `;
@@ -1935,14 +2047,24 @@ function renderCompare() {
                                 <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Taille</p>
                                 <p class="text-sm font-black text-slate-800">${latest?.height ? latest.height + ' cm' : '--'}</p>
                             </div>
-                            <div class="bg-slate-50 rounded-lg p-2">
+                            
+                                                        <div class="bg-slate-50 rounded-lg p-2">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">IMC</p>
                                 <p class="text-sm font-black text-slate-800">${
                                     (latest?.weight && latest?.height)
                                         ? (latest.weight / Math.pow(latest.height / 100, 2)).toFixed(1)
                                         : '--'
                                 }</p>
+                                ${(() => {
+                                    if (!latest?.weight || !latest?.height) return '';
+                                    const bmiVal = latest.weight / Math.pow(latest.height / 100, 2);
+                                    const ageM = ageInMonths(p.dob, latest.date);
+                                    const cls = classifyBMI(p.gender, ageM, bmiVal);
+                                    if (!cls) return '';
+                                    return `<p class="text-[9px] ${cls.color} font-bold mt-0.5">${cls.emoji} ${cls.label.split(' ')[0]}</p>`;
+                                })()}
                             </div>
+                            
                             <div class="bg-slate-50 rounded-lg p-2">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Vaccins</p>
                                 <p class="text-sm font-black text-slate-800">${doneVac}/${recs.vaccines.length}</p>
@@ -2178,7 +2300,230 @@ function renderCompare() {
             container2.innerHTML = renderList(p2);
         }
         
-        
+                // ============================================
+        // ===== STATISTIQUES AVANCÉES / TENDANCES ====
+        // ============================================
+
+        let trendsChartInstance = null;
+        let currentTrendsMetric = 'weight';
+
+        function setTrendsMetric(metric) {
+            currentTrendsMetric = metric;
+            const btnW = document.getElementById('trendsBtnWeight');
+            const btnH = document.getElementById('trendsBtnHeight');
+            if (btnW) btnW.className = metric === 'weight'
+                ? 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white'
+                : 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100';
+            if (btnH) btnH.className = metric === 'height'
+                ? 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white'
+                : 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100';
+            renderTrendsChart();
+        }
+
+        function renderTrends() {
+            const profile = getCurrentProfile();
+            const recs = [...getCurrentRecords().growth].sort((a,b) => a.date.localeCompare(b.date));
+
+            const nameEl = document.getElementById('trendsProfileName');
+            if (nameEl) nameEl.textContent = profile.name;
+
+            // --- Statistiques de synthèse ---
+            const weights = recs.filter(r => r.weight).map(r => r.weight);
+            const heights = recs.filter(r => r.height).map(r => r.height);
+
+            const avgW = weights.length ? (weights.reduce((a,b) => a+b, 0) / weights.length) : null;
+            const avgH = heights.length ? (heights.reduce((a,b) => a+b, 0) / heights.length) : null;
+
+            document.getElementById('trendsAvgWeight').textContent = avgW ? avgW.toFixed(2) + ' kg' : '--';
+            document.getElementById('trendsAvgHeight').textContent = avgH ? avgH.toFixed(1) + ' cm' : '--';
+            document.getElementById('trendsWeightRange').textContent = weights.length
+                ? `Min ${Math.min(...weights)} kg · Max ${Math.max(...weights)} kg` : 'Aucune donnée';
+            document.getElementById('trendsHeightRange').textContent = heights.length
+                ? `Min ${Math.min(...heights)} cm · Max ${Math.max(...heights)} cm` : 'Aucune donnée';
+
+            // --- Vitesse de croissance (basée sur les 2 dernières mesures) ---
+            const lastTwoWithWeight = recs.filter(r => r.weight).slice(-2);
+            const lastTwoWithHeight = recs.filter(r => r.height).slice(-2);
+
+            const computeVelocity = (arr, field) => {
+                if (arr.length < 2) return null;
+                const [prev, curr] = arr;
+                const days = (new Date(curr.date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
+                if (days <= 0) return null;
+                const delta = curr[field] - prev[field];
+                return {
+                    perDay: delta / days,
+                    perMonth: (delta / days) * 30.44,
+                    perYear: (delta / days) * 365.25,
+                    days: Math.round(days),
+                    delta: delta
+                };
+            };
+
+            const wV = computeVelocity(lastTwoWithWeight, 'weight');
+            const hV = computeVelocity(lastTwoWithHeight, 'height');
+
+            const wVelEl = document.getElementById('trendsWeightVelocity');
+            const wVelInfo = document.getElementById('trendsWeightVelocityInfo');
+            if (wV) {
+                wVelEl.textContent = `${wV.perMonth >= 0 ? '+' : ''}${wV.perMonth.toFixed(2)} kg/mois`;
+                wVelInfo.textContent = `${wV.delta >= 0 ? '+' : ''}${wV.delta.toFixed(2)} kg en ${wV.days} j`;
+            } else {
+                wVelEl.textContent = '--';
+                wVelInfo.textContent = 'Pas assez de données';
+            }
+
+            const hVelEl = document.getElementById('trendsHeightVelocity');
+            const hVelInfo = document.getElementById('trendsHeightVelocityInfo');
+            if (hV) {
+                hVelEl.textContent = `${hV.perMonth >= 0 ? '+' : ''}${hV.perMonth.toFixed(2)} cm/mois`;
+                hVelInfo.textContent = `${hV.delta >= 0 ? '+' : ''}${hV.delta.toFixed(1)} cm en ${hV.days} j`;
+            } else {
+                hVelEl.textContent = '--';
+                hVelInfo.textContent = 'Pas assez de données';
+            }
+
+            // --- Tableau des variations ---
+            renderTrendsVariationsTable(profile, recs);
+
+            // --- Graphique ---
+            renderTrendsChart();
+        }
+
+        function renderTrendsVariationsTable(profile, recs) {
+            const tbody = document.getElementById('trendsVariationsTable');
+            if (!tbody) return;
+
+            if (recs.length < 2) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-400 italic">Au moins 2 mesures sont nécessaires pour calculer les variations.</td></tr>';
+                return;
+            }
+
+            const rows = [];
+            for (let i = 1; i < recs.length; i++) {
+                const prev = recs[i - 1];
+                const curr = recs[i];
+                const dW = (curr.weight != null && prev.weight != null) ? curr.weight - prev.weight : null;
+                const dH = (curr.height != null && prev.height != null) ? curr.height - prev.height : null;
+                const dC = (curr.headCirc != null && prev.headCirc != null) ? curr.headCirc - prev.headCirc : null;
+
+                const fmtDelta = (v, unit, decimals = 2) => {
+                    if (v == null) return '<span class="text-slate-300">--</span>';
+                    const sign = v >= 0 ? '+' : '';
+                    const color = v >= 0 ? 'text-emerald-700' : 'text-rose-700';
+                    return `<span class="${color} font-bold">${sign}${v.toFixed(decimals)} ${unit}</span>`;
+                };
+
+                rows.push(`
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="p-3 font-semibold text-slate-800">${formatDateFR(curr.date)}</td>
+                        <td class="p-3 text-slate-500">${calculateAgeStr(profile.dob, curr.date)}</td>
+                        <td class="p-3 font-bold text-slate-800">${curr.weight ?? '--'}${curr.weight ? ' kg' : ''}</td>
+                        <td class="p-3">${fmtDelta(dW, 'kg')}</td>
+                        <td class="p-3 font-bold text-slate-800">${curr.height ?? '--'}${curr.height ? ' cm' : ''}</td>
+                        <td class="p-3">${fmtDelta(dH, 'cm', 1)}</td>
+                        <td class="p-3 font-bold text-slate-800">${curr.headCirc ?? '--'}${curr.headCirc ? ' cm' : ''}</td>
+                        <td class="p-3">${fmtDelta(dC, 'cm', 1)}</td>
+                    </tr>
+                `);
+            }
+
+            // Inverser pour afficher du plus récent au plus ancien
+            tbody.innerHTML = rows.reverse().join('');
+        }
+
+        function renderTrendsChart() {
+            const canvas = document.getElementById('trendsChart');
+            if (!canvas) return;
+
+            const profile = getCurrentProfile();
+            const recs = [...getCurrentRecords().growth]
+                .filter(r => r[currentTrendsMetric] != null)
+                .sort((a,b) => a.date.localeCompare(b.date));
+
+            if (trendsChartInstance) {
+                trendsChartInstance.destroy();
+                trendsChartInstance = null;
+            }
+
+            if (recs.length === 0) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '14px Inter';
+                ctx.fillStyle = '#94a3b8';
+                ctx.textAlign = 'center';
+                ctx.fillText('Aucune donnée disponible', canvas.width/2, canvas.height/2);
+                return;
+            }
+
+            // Calcul de la vitesse (dérivée) entre chaque paire de points
+            const velocities = [];
+            for (let i = 1; i < recs.length; i++) {
+                const prev = recs[i - 1];
+                const curr = recs[i];
+                const days = (new Date(curr.date) - new Date(prev.date)) / (1000 * 60 * 60 * 24);
+                if (days <= 0) {
+                    velocities.push(null);
+                    continue;
+                }
+                const delta = curr[currentTrendsMetric] - prev[currentTrendsMetric];
+                velocities.push((delta / days) * 30.44); // par mois
+            }
+
+            const labels = recs.slice(1).map(r => {
+                const ageM = ageInMonths(profile.dob, r.date);
+                const years = Math.floor(ageM / 12);
+                const months = Math.round(ageM % 12);
+                return years === 0 ? `${months}m` : `${years}a ${months}m`;
+            });
+
+            const unit = currentTrendsMetric === 'weight' ? 'kg/mois' : 'cm/mois';
+
+            const ctx = canvas.getContext('2d');
+            trendsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Vitesse de croissance (${unit})`,
+                        data: velocities,
+                        backgroundColor: velocities.map(v =>
+                            v == null ? 'rgba(148,163,184,0.3)' :
+                            v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(244,63,94,0.7)'
+                        ),
+                        borderColor: velocities.map(v =>
+                            v == null ? '#cbd5e1' :
+                            v >= 0 ? '#059669' : '#e11d48'
+                        ),
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const v = ctx.raw;
+                                    if (v == null) return 'Données insuffisantes';
+                                    return `${v >= 0 ? '+' : ''}${v.toFixed(2)} ${unit}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            title: { display: true, text: `Vitesse (${unit})`, font: { size: 11, weight: 'bold' } }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
         // --- DOCUMENTS ---
         function filterDocCategory(cat) {
             currentDocCategory = cat;
@@ -3218,32 +3563,27 @@ function renderCompare() {
 
         // Détermine le percentile approximatif d'une valeur selon les courbes OMS
         // Retourne { percentile: number, inRange: bool, label: string }
-        function calculatePercentile(metric, gender, ageMonths, value) {
-            const whoValues = interpolateWHO(metric, gender, ageMonths);
-            if (!whoValues || value == null) return null;
+        
+	        // Classification OMS de l'IMC-pour-âge (enfants 0-5 ans)
+        // Retourne { level, label, color, bg, emoji }
+        function classifyBMI(gender, ageMonths, bmi) {
+            const p = calculatePercentile('bmi', gender, ageMonths, bmi);
+            if (!p) return null;
 
-            const [p3, p15, p50, p85, p97] = whoValues;
-
-            // Hors plage
-            if (value < p3) return { percentile: 3, inRange: false, level: 'low', label: '< 3e percentile' };
-            if (value > p97) return { percentile: 97, inRange: false, level: 'high', label: '> 97e percentile' };
-
-            // Interpolation dans les intervalles
-            let percentile;
-            if (value <= p15) percentile = 3 + ((value - p3) / (p15 - p3)) * 12;
-            else if (value <= p50) percentile = 15 + ((value - p15) / (p50 - p15)) * 35;
-            else if (value <= p85) percentile = 50 + ((value - p50) / (p85 - p50)) * 35;
-            else percentile = 85 + ((value - p85) / (p97 - p85)) * 12;
-
-            const rounded = Math.round(percentile);
-            return {
-                percentile: rounded,
-                inRange: true,
-                level: 'normal',
-                label: `${rounded}ᵉ percentile`
-            };
+            if (p.percentile < 3) {
+                return { level: 'severe-thin', label: 'Insuffisance pondérale sévère', color: 'text-red-800', bg: 'bg-red-100', emoji: '🔴' };
+            }
+            if (p.percentile < 15) {
+                return { level: 'thin', label: 'Insuffisance pondérale', color: 'text-yellow-800', bg: 'bg-yellow-100', emoji: '🟡' };
+            }
+            if (p.percentile < 85) {
+                return { level: 'normal', label: 'Corpulence normale', color: 'text-emerald-800', bg: 'bg-emerald-100', emoji: '🟢' };
+            }
+            if (p.percentile < 97) {
+                return { level: 'overweight', label: 'Surpoids', color: 'text-orange-800', bg: 'bg-orange-100', emoji: '🟠' };
+            }
+            return { level: 'obese', label: 'Obésité', color: 'text-red-800', bg: 'bg-red-100', emoji: '🔴' };
         }
-
         
         const QR_URL_LIMIT = 2900;
 
