@@ -1,17 +1,20 @@
 // ============================================
 // Service Worker — SantéPro PWA
-// Gère le cache pour le mode hors ligne
+// Hébergé sur : https://steffprevot196.github.io/Carnet-Sante/
 // ============================================
 
 const CACHE_VERSION = 'santepro-v1';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
+// Chemin de base de l'app (adapte au sous-dossier GitHub Pages)
+const BASE_PATH = '/Carnet-Sante/';
+
 // Ressources à pré-cacher (le cœur de l'app)
 const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
+  BASE_PATH,
+  BASE_PATH + 'index.html',
+  BASE_PATH + 'manifest.json',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/chart.js',
   'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
@@ -20,20 +23,19 @@ const STATIC_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
 ];
 
-// Domaines autorisés pour le cache runtime (runtime = à la volée)
+// Domaines autorisés pour le cache runtime (à la volée)
 const RUNTIME_CACHE_DOMAINS = [
   'cdn.jsdelivr.net',
   'cdnjs.cloudflare.com',
   'fonts.googleapis.com',
   'fonts.gstatic.com',
-  'accounts.google.com',
-  'www.googleapis.com'
+  'cdn.tailwindcss.com'
 ];
 
 // Domaines à NE JAMAIS cacher (API dynamiques, auth)
 const NEVER_CACHE_DOMAINS = [
-  'accounts.google.com',   // Auth Google
-  'oauth2.googleapis.com'  // Tokens OAuth
+  'accounts.google.com',
+  'oauth2.googleapis.com'
 ];
 
 // ============================================
@@ -93,7 +95,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Ressources locales → Cache First (le plus rapide)
+  // 4. Ressources locales (sous /Carnet-Sante/) → Cache First
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -107,7 +109,7 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => {
           // Fallback : retourne index.html pour les navigations
           if (request.mode === 'navigate') {
-            return caches.match('./index.html');
+            return caches.match(BASE_PATH + 'index.html');
           }
           return new Response('Hors ligne', { status: 503 });
         });
@@ -116,7 +118,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. CDN externes (Tailwind, Chart, FontAwesome...) → Stale While Revalidate
+  // 5. CDN externes → Stale While Revalidate
   if (RUNTIME_CACHE_DOMAINS.some(d => url.hostname.includes(d))) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -133,12 +135,10 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-
-  // 6. Autres (analytics, etc.) → réseau uniquement
 });
 
 // ============================================
-// MESSAGES — Permettre au client de forcer la mise à jour
+// MESSAGES — Forcer mise à jour / vider cache
 // ============================================
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
