@@ -3399,6 +3399,102 @@
                 return;
             }
 
+
+
+            const data = getLiaisonData();
+            if (!data.medications) data.medications = [];
+
+            // Retire les lignes vides existantes
+            data.medications = data.medications.filter(m => m.name && m.name.trim());
+
+            // Ajoute les nouveaux (évite les doublons par nom)
+            let added = 0;
+            analysis.medications.forEach(m => {
+                const exists = data.medications.some(existing =>
+                    existing.name.toLowerCase().includes(m.name.toLowerCase()) ||
+                    m.name.toLowerCase().includes(existing.name.toLowerCase())
+                );
+                if (!exists) {
+                    data.medications.push({
+                        name: m.name,
+                        dosage: m.posology || '',
+                        indication: m.indication || ''
+                    });
+                    added++;
+                }
+            });
+
+            if (added === 0) {
+                showToast('Tous ces médicaments sont déjà dans votre fiche', 'info');
+                return;
+            }
+
+            data.updatedAt = new Date().toISOString();
+            saveState();
+            renderLiaison();
+
+            showToast(`✅ ${added} traitement${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} à la fiche de liaison`, 'success');
+
+            // Suggérer d'aller voir la fiche
+            setTimeout(() => {
+                if (confirm('Traitements ajoutés à la fiche de liaison. Voulez-vous y accéder maintenant ?')) {
+                    closeModal('addDocumentModal');
+                    switchView('liaison');
+                }
+            }, 500);
+        }
+
+            const ocrBtn = document.getElementById('docOcrBtn');
+            const progress = document.getElementById('docOcrProgress');
+            const result = document.getElementById('docOcrResult');
+            const error = document.getElementById('docOcrError');
+            const errorText = document.getElementById('docOcrErrorText');
+            const ocrText = document.getElementById('docOcrText');
+
+            // État "en cours"
+            ocrBtn.disabled = true;
+            ocrBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Analyse...';
+            ocrBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            progress.classList.remove('hidden');
+            result.classList.add('hidden');
+            error.classList.add('hidden');
+            document.getElementById('docOcrProgressBar').style.width = '0%';
+
+            try {
+                const worker = await getTesseractWorker();
+                const { data: { text } } = await worker.recognize(capturedDocPhotoDataUrl);
+
+                // Nettoyage basique du texte
+                const cleanedText = text
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\n{3,}/g, '\n\n') // Max 2 sauts de ligne consécutifs
+                    .trim();
+
+                if (!cleanedText) {
+                    throw new Error('Aucun texte détecté dans l\'image. Essayez une photo plus nette ou mieux éclairée.');
+                }
+
+                ocrText.value = cleanedText;
+                result.classList.remove('hidden');
+                progress.classList.add('hidden');
+                // Analyse intelligente automatique
+                renderOcrAnalysis();
+                // Faire défiler vers le résultat sur mobile
+                setTimeout(() => {
+                    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+                showToast('✅ Texte extrait avec succès', 'success');
+            } catch (err) {
+                console.error('[OCR]', err);
+                errorText.textContent = err.message || 'Erreur d\'analyse OCR.';
+                error.classList.remove('hidden');
+                progress.classList.add('hidden');
+            } finally {
+                ocrBtn.disabled = false;
+                ocrBtn.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> Relancer l\'OCR';
+                ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
         // ============================================
         // ===== PARSING INTELLIGENT DU TEXTE OCR =====
         // ============================================
@@ -3575,102 +3671,6 @@
                 showToast('Aucun médicament à ajouter', 'error');
                 return;
             }
-
-            const data = getLiaisonData();
-            if (!data.medications) data.medications = [];
-
-            // Retire les lignes vides existantes
-            data.medications = data.medications.filter(m => m.name && m.name.trim());
-
-            // Ajoute les nouveaux (évite les doublons par nom)
-            let added = 0;
-            analysis.medications.forEach(m => {
-                const exists = data.medications.some(existing =>
-                    existing.name.toLowerCase().includes(m.name.toLowerCase()) ||
-                    m.name.toLowerCase().includes(existing.name.toLowerCase())
-                );
-                if (!exists) {
-                    data.medications.push({
-                        name: m.name,
-                        dosage: m.posology || '',
-                        indication: m.indication || ''
-                    });
-                    added++;
-                }
-            });
-
-            if (added === 0) {
-                showToast('Tous ces médicaments sont déjà dans votre fiche', 'info');
-                return;
-            }
-
-            data.updatedAt = new Date().toISOString();
-            saveState();
-            renderLiaison();
-
-            showToast(`✅ ${added} traitement${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''} à la fiche de liaison`, 'success');
-
-            // Suggérer d'aller voir la fiche
-            setTimeout(() => {
-                if (confirm('Traitements ajoutés à la fiche de liaison. Voulez-vous y accéder maintenant ?')) {
-                    closeModal('addDocumentModal');
-                    switchView('liaison');
-                }
-            }, 500);
-        }
-
-            const ocrBtn = document.getElementById('docOcrBtn');
-            const progress = document.getElementById('docOcrProgress');
-            const result = document.getElementById('docOcrResult');
-            const error = document.getElementById('docOcrError');
-            const errorText = document.getElementById('docOcrErrorText');
-            const ocrText = document.getElementById('docOcrText');
-
-            // État "en cours"
-            ocrBtn.disabled = true;
-            ocrBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Analyse...';
-            ocrBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            progress.classList.remove('hidden');
-            result.classList.add('hidden');
-            error.classList.add('hidden');
-            document.getElementById('docOcrProgressBar').style.width = '0%';
-
-            try {
-                const worker = await getTesseractWorker();
-                const { data: { text } } = await worker.recognize(capturedDocPhotoDataUrl);
-
-                // Nettoyage basique du texte
-                const cleanedText = text
-                    .replace(/\r\n/g, '\n')
-                    .replace(/\n{3,}/g, '\n\n') // Max 2 sauts de ligne consécutifs
-                    .trim();
-
-                if (!cleanedText) {
-                    throw new Error('Aucun texte détecté dans l\'image. Essayez une photo plus nette ou mieux éclairée.');
-                }
-
-                ocrText.value = cleanedText;
-                result.classList.remove('hidden');
-                progress.classList.add('hidden');
-                // Analyse intelligente automatique
-                renderOcrAnalysis();
-                // Faire défiler vers le résultat sur mobile
-                setTimeout(() => {
-                    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 100);
-                showToast('✅ Texte extrait avec succès', 'success');
-            } catch (err) {
-                console.error('[OCR]', err);
-                errorText.textContent = err.message || 'Erreur d\'analyse OCR.';
-                error.classList.remove('hidden');
-                progress.classList.add('hidden');
-            } finally {
-                ocrBtn.disabled = false;
-                ocrBtn.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> Relancer l\'OCR';
-                ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        }
-
 
         // ============================================
         // ============ GOOGLE DRIVE CHIFFRÉ ==========
