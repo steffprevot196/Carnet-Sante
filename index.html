@@ -1659,49 +1659,21 @@
 
       
       
-              function renderGrowthTable() {
-            const profile = getCurrentProfile();
-            const recs = [...getCurrentRecords().growth].sort((a,b) => b.date.localeCompare(a.date));
-            const tbody = document.getElementById('growthHistoryTable');
-            if (recs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Aucune donnée de croissance enregistrée.</td></tr>';
-                return;
-            }
-
-            // Helper qui génère un badge percentile
-            const badgePercentile = (metric, value, date) => {
-                if (value == null) return '<span class="text-slate-300">--</span>';
-                const ageM = ageInMonths(profile.dob, date);
-                const p = calculatePercentile(metric, profile.gender, ageM, value);
-                if (!p) return '';
-                if (!p.inRange) {
-                    return `<span class="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded ml-1" title="Hors courbes OMS 3-97%">⚠️ ${p.label}</span>`;
-                }
-                return `<span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded ml-1">${p.label}</span>`;
-            };
-
-                       tbody.innerHTML = recs.map(r => {
-                const bmi = (r.weight && r.height) ? (r.weight / Math.pow(r.height / 100, 2)) : null;
-                return `
-                <tr class="hover:bg-slate-50/80 transition">
-                    <td class="p-4 font-semibold text-slate-800">${formatDateFR(r.date)}</td>
-                    <td class="p-4 text-slate-500">${calculateAgeStr(profile.dob, r.date)}</td>
-                    <td class="p-4 font-bold text-slate-800">${r.weight ? r.weight + ' kg' : '--'}${badgePercentile('weight', r.weight, r.date)}</td>
-                    <td class="p-4 font-bold text-slate-800">${r.height ? r.height + ' cm' : '--'}${badgePercentile('height', r.height, r.date)}</td>
-                    <td class="p-4 font-bold text-slate-800">${r.headCirc ? r.headCirc + ' cm' : '--'}${badgePercentile('headCirc', r.headCirc, r.date)}</td>
-                                        <td class="p-4 font-bold text-slate-800">${bmi ? bmi.toFixed(1) : '--'}${bmi ? (() => {
-                        const ageM = ageInMonths(profile.dob, r.date);
-                        const cls = classifyBMI(profile.gender, ageM, bmi);
-                        if (!cls) return '';
-                        return `<span class="text-[10px] ${cls.bg} ${cls.color} font-bold px-1.5 py-0.5 rounded ml-1" title="${cls.label}">${cls.emoji} ${cls.label}</span>`;
-                    })() : ''}</td>
-                    <td class="p-4 text-right"><button onclick="deleteGrowthRecord('${r.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button></td>
-                </tr>
-                `;
-            }).join('');
-        }
       
-                function renderGrowthChart() {
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+
+
+
             const canvas = document.getElementById('growthChart');
             const emptyState = document.getElementById('growthChartEmpty');
             if (!canvas) return;
@@ -1718,8 +1690,52 @@
                 return;
             }
             
+        function renderGrowthTable() {
+            const profile = getCurrentProfile();
+            const recs = [...getCurrentRecords().growth].sort((a,b) => b.date.localeCompare(a.date));
+            const tbody = document.getElementById('growthHistoryTable');
+            if (recs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-400 italic">Aucune donnée de croissance enregistrée.</td></tr>';
+                return;
+            }
 
+            // Helper qui génère un badge percentile
+            const badgePercentile = (metric, value, date) => {
+                if (value == null) return '<span class="text-slate-300">--</span>';
+                const ageM = ageInMonths(profile.dob, date);
+                const p = calculatePercentile(metric, profile.gender, ageM, value);
+                if (!p) return '';
+                if (!p.inRange) {
+                    return '<span class="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded ml-1" title="Hors courbes OMS 3-97%">⚠️ ' + p.label + '</span>';
+                }
+                return '<span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded ml-1">' + p.label + '</span>';
+            };
 
+            // Helper qui génère un badge IMC classifié
+            const badgeBMI = (bmi, date) => {
+                if (bmi == null) return '';
+                const ageM = ageInMonths(profile.dob, date);
+                const cls = classifyBMI(profile.gender, ageM, bmi);
+                if (!cls) return '';
+                return '<span class="text-[10px] ' + cls.bg + ' ' + cls.color + ' font-bold px-1.5 py-0.5 rounded ml-1" title="' + cls.label + '">' + cls.emoji + ' ' + cls.label + '</span>';
+            };
+
+            let html = '';
+            recs.forEach(r => {
+                const bmi = (r.weight && r.height) ? (r.weight / Math.pow(r.height / 100, 2)) : null;
+                html += '<tr class="hover:bg-slate-50/80 transition">';
+                html += '<td class="p-4 font-semibold text-slate-800">' + formatDateFR(r.date) + '</td>';
+                html += '<td class="p-4 text-slate-500">' + calculateAgeStr(profile.dob, r.date) + '</td>';
+                html += '<td class="p-4 font-bold text-slate-800">' + (r.weight ? r.weight + ' kg' : '--') + badgePercentile('weight', r.weight, r.date) + '</td>';
+                html += '<td class="p-4 font-bold text-slate-800">' + (r.height ? r.height + ' cm' : '--') + badgePercentile('height', r.height, r.date) + '</td>';
+                html += '<td class="p-4 font-bold text-slate-800">' + (r.headCirc ? r.headCirc + ' cm' : '--') + badgePercentile('headCirc', r.headCirc, r.date) + '</td>';
+                html += '<td class="p-4 font-bold text-slate-800">' + (bmi ? bmi.toFixed(1) : '--') + badgeBMI(bmi, r.date) + '</td>';
+                html += '<td class="p-4 text-right"><button onclick="deleteGrowthRecord(\'' + r.id + '\')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button></td>';
+                html += '</tr>';
+            });
+            tbody.innerHTML = html;
+        }
+function renderGrowthChart() {
             
             canvas.classList.remove('hidden');
             emptyState.classList.add('hidden');
