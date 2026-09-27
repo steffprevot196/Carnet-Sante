@@ -624,6 +624,48 @@
                         <p class="text-xs text-blue-300 italic">Cliquez sur "Rafraîchir" pour lister vos sauvegardes.</p>
                     </div>
                 </div>
+                
+                <!-- Archivage des documents anciens -->
+                <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-xs font-bold text-blue-200 uppercase tracking-wider">
+                            <i class="fa-solid fa-box-archive mr-1"></i> Archivage Drive
+                        </p>
+                    </div>
+                    <p class="text-[11px] text-blue-300 mb-3 leading-relaxed">
+                        Les documents de plus de <span class="font-bold text-white" id="archiveAgeDisplay">12 mois</span> peuvent être archivés sur votre Drive (chiffrés).
+                        Leur photo disparaît du stockage local mais reste accessible à la demande.
+                    </p>
+                    <div class="bg-white/5 rounded-lg p-3 mb-3">
+                        <p class="text-[10px] uppercase tracking-wider text-blue-300 font-bold mb-1">État de l'archivage</p>
+                        <p class="text-xs text-white font-semibold" id="archiveStatusText">Vérification...</p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="showArchivePreview()" class="flex-1 text-xs bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-2 rounded-lg transition">
+                            <i class="fa-solid fa-eye mr-1"></i> Prévisualiser
+                        </button>
+                        <button onclick="archiveOldDocuments()" id="archiveBtn" class="flex-1 text-xs bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-3 py-2 rounded-lg transition">
+                            <i class="fa-solid fa-box-archive mr-1"></i> Archiver maintenant
+                        </button>
+                    </div>
+                    <details class="mt-3">
+                        <summary class="cursor-pointer text-[11px] text-blue-300 hover:text-white font-semibold">
+                            ⚙️ Paramètres avancés
+                        </summary>
+                        <div class="mt-2 space-y-2">
+                            <label class="block text-[10px] text-blue-300">
+                                Âge minimum pour archiver (mois) :
+                                <input type="number" id="archiveMinAgeMonths" min="1" max="120" value="12"
+                                       class="w-16 ml-2 bg-white/10 text-white border border-white/20 rounded px-2 py-1 text-xs"
+                                       onchange="saveArchiveAge()">
+                            </label>
+                            <p class="text-[10px] text-blue-400 italic">
+                                💡 Les documents plus récents que cet âge restent dans le stockage local pour un accès rapide.
+                            </p>
+                        </div>
+                    </details>
+                </div>
+
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1667,25 +1709,36 @@
             grid.innerHTML = recs.map(d => `
                 <div class="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition group">
                     <div>
-                        <div class="flex justify-between items-start mb-3">
+                        
+                                                <div class="flex justify-between items-start mb-3">
                             ${d.photo
-                                ? `<img src="${d.photo}" alt="${esc(d.title)}" class="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer" onclick="viewDocumentPhoto('${d.id}')">`
-                                : `<div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold">
-                                     <i class="fa-solid ${d.category==='Imagerie'?'fa-file-image':(d.category==='Ordonnance'?'fa-file-prescription':'fa-file-medical')}"></i>
-                                   </div>`}
+                                ? `<img src="${d.photo}" alt="${esc(d.title)}" class="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer" onclick="viewDocumentPhotoOrArchive('${d.id}')">`
+                                : (d.archived
+                                    ? `<div class="w-16 h-16 rounded-xl bg-slate-100 border border-slate-300 flex flex-col items-center justify-center text-slate-500 cursor-pointer relative" onclick="viewDocumentPhotoOrArchive('${d.id}')">
+                                         <i class="fa-solid fa-cloud text-xl"></i>
+                                         <span class="text-[8px] font-bold mt-0.5">ARCHIVÉ</span>
+                                       </div>`
+                                    : `<div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold">
+                                         <i class="fa-solid ${d.category==='Imagerie'?'fa-file-image':(d.category==='Ordonnance'?'fa-file-prescription':'fa-file-medical')}"></i>
+                                       </div>`)}
 
                             <button onclick="deleteDocument('${d.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 transition opacity-0 group-hover:opacity-100 p-1"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
+                        
                         <h4 class="font-bold text-slate-800 text-sm mb-1 line-clamp-1" title="${esc(d.title)}">${esc(d.title)}</h4>
                         <p class="text-[11px] text-slate-400 mb-2">${formatDateFR(d.date)} • ${esc(d.category)}</p>
                         ${d.tags ? `<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md mb-3">${esc(d.tags)}</span>` : ''}
                                                 ${d.ocrText ? `<span class="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md mb-3 ml-1" title="Texte OCR disponible"><i class="fa-solid fa-magnifying-glass mr-0.5"></i>OCR</span>` : ''}
                     </div>
-                    <div class="pt-3 border-t border-slate-100 flex gap-2">
+                    
+                                        <div class="pt-3 border-t border-slate-100 flex gap-2">
                         ${d.photo
-                            ? `<button onclick="viewDocumentPhoto('${d.id}')" class="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-eye mr-1"></i>Aperçu</button>`
-                            : `<button onclick="showToast('Aucune photo attachée à ce document', 'info')" class="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold rounded-lg transition cursor-not-allowed" title="Aucune photo attachée"><i class="fa-solid fa-eye-slash mr-1"></i>Aperçu</button>`}
+                            ? `<button onclick="viewDocumentPhotoOrArchive('${d.id}')" class="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-eye mr-1"></i>Aperçu</button>`
+                            : (d.archived
+                                ? `<button onclick="viewDocumentPhotoOrArchive('${d.id}')" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>Télécharger</button>`
+                                : `<button onclick="showToast('Aucune photo attachée à ce document', 'info')" class="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold rounded-lg transition cursor-not-allowed" title="Aucune photo attachée"><i class="fa-solid fa-eye-slash mr-1"></i>Aperçu</button>`)}
                     </div>
+                    
                 </div>
             `).join('');
         }
@@ -4073,6 +4126,307 @@
             }
         }
 
+
+        // ============================================
+        // ======== ARCHIVAGE DRIVE DES DOCUMENTS =====
+        // ============================================
+
+        const ARCHIVE_AGE_DEFAULT = 12; // mois
+
+        function getArchiveMinAge() {
+            const stored = localStorage.getItem('santePro_archiveMinAge');
+            return stored ? parseInt(stored) : ARCHIVE_AGE_DEFAULT;
+        }
+
+        function saveArchiveAge() {
+            const input = document.getElementById('archiveMinAgeMonths');
+            if (!input) return;
+            const val = Math.max(1, Math.min(120, parseInt(input.value) || ARCHIVE_AGE_DEFAULT));
+            localStorage.setItem('santePro_archiveMinAge', val);
+            input.value = val;
+            updateArchiveStatus();
+            showToast(`✅ Âge minimum d'archivage : ${val} mois`, 'success');
+        }
+
+        // Calcule le nombre de mois entre deux dates
+        function monthsBetween(dateStr1, dateStr2 = null) {
+            const d1 = new Date(dateStr1);
+            const d2 = dateStr2 ? new Date(dateStr2) : new Date();
+            const months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+            return months;
+        }
+
+        // Retourne la liste des documents éligibles à l'archivage
+        function getArchivableDocuments() {
+            const minAge = getArchiveMinAge();
+            const recs = getCurrentRecords();
+            return recs.documents.filter(d => {
+                if (!d.photo) return false;              // Pas de photo à archiver
+                if (d.archived) return false;            // Déjà archivé
+                const ageMonths = monthsBetween(d.date);
+                return ageMonths >= minAge;
+            });
+        }
+
+        // Compte les documents archivés et affiche l'état
+        function updateArchiveStatus() {
+            const statusText = document.getElementById('archiveStatusText');
+            const ageDisplay = document.getElementById('archiveAgeDisplay');
+            const ageInput = document.getElementById('archiveMinAgeMonths');
+            if (!statusText) return;
+
+            const minAge = getArchiveMinAge();
+            if (ageDisplay) ageDisplay.textContent = `${minAge} mois`;
+            if (ageInput) ageInput.value = minAge;
+
+            const recs = getCurrentRecords();
+            const totalDocs = recs.documents.length;
+            const archivedCount = recs.documents.filter(d => d.archived).length;
+            const eligibleCount = getArchivableDocuments().length;
+
+            if (totalDocs === 0) {
+                statusText.textContent = 'Aucun document dans ce profil';
+            } else {
+                statusText.textContent = `${archivedCount} archivé(s) · ${eligibleCount} à archiver · ${totalDocs} au total`;
+            }
+        }
+
+        // Prévisualisation : montre ce qui va être archivé
+        function showArchivePreview() {
+            const eligible = getArchivableDocuments();
+            const minAge = getArchiveMinAge();
+
+            if (eligible.length === 0) {
+                showToast(`Aucun document de plus de ${minAge} mois avec photo à archiver`, 'info');
+                return;
+            }
+
+            const list = eligible.map(d => `• ${d.title} (${formatDateFR(d.date)})`).join('\n');
+
+            if (!confirm(
+                `${eligible.length} document(s) seront archivés sur votre Drive :\n\n${list}\n\n` +
+                `⚠️ Leurs photos seront retirées du stockage local mais resteront accessibles via un clic.\n\n` +
+                `Continuer ?`
+            )) return;
+
+            archiveOldDocuments();
+        }
+
+        // Archive les documents éligibles sur Drive
+        async function archiveOldDocuments() {
+            if (!isGoogleTokenValid()) {
+                showToast('Connectez Google d\'abord', 'error');
+                return;
+            }
+
+            const password = localStorage.getItem('santePro_drivePassword');
+            if (!password) {
+                showToast('Mot de passe de chiffrement Drive manquant', 'error');
+                return;
+            }
+
+            const eligible = getArchivableDocuments();
+            if (eligible.length === 0) {
+                showToast('Aucun document à archiver', 'info');
+                return;
+            }
+
+            const btn = document.getElementById('archiveBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Archivage...';
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const doc of eligible) {
+                try {
+                    // 1. Prépare le contenu à archiver (photo + métadonnées)
+                    const archiveContent = JSON.stringify({
+                        version: 1,
+                        archivedAt: new Date().toISOString(),
+                        profileId: getCurrentProfile()?.id,
+                        doc: {
+                            id: doc.id,
+                            title: doc.title,
+                            date: doc.date,
+                            category: doc.category,
+                            tags: doc.tags,
+                            fileType: doc.fileType,
+                            ocrText: doc.ocrText || null,
+                            photo: doc.photo
+                        }
+                    });
+
+                    // 2. Chiffre
+                    const encryptedB64 = await encryptPayloadForDrive(archiveContent, password);
+
+                    // 3. Upload vers Drive
+                    const filename = `santepro-archive-${doc.id}.enc`;
+                    const metadata = {
+                        name: filename,
+                        parents: ['appDataFolder'],
+                        mimeType: 'application/octet-stream',
+                        appProperties: {
+                            docId: doc.id,
+                            profileId: getCurrentProfile()?.id || '',
+                            archivedAt: new Date().toISOString()
+                        }
+                    };
+                    const boundary = '----santepro' + Date.now();
+                    const body =
+                        `--${boundary}\r\n` +
+                        `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+                        JSON.stringify(metadata) + `\r\n` +
+                        `--${boundary}\r\n` +
+                        `Content-Type: application/octet-stream\r\n\r\n` +
+                        encryptedB64 + `\r\n` +
+                        `--${boundary}--`;
+
+                    const response = await fetch(
+                        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${googleAccessToken}`,
+                                'Content-Type': `multipart/related; boundary=${boundary}`
+                            },
+                            body
+                        }
+                    );
+
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${err.substring(0, 100)}`);
+                    }
+
+                    const result = await response.json();
+
+                    // 4. Marque le document comme archivé en local + supprime la photo
+                    const recs = getCurrentRecords();
+                    const localDoc = recs.documents.find(d => d.id === doc.id);
+                    if (localDoc) {
+                        localDoc.archived = true;
+                        localDoc.driveFileId = result.id;
+                        localDoc.archivedAt = new Date().toISOString();
+                        delete localDoc.photo; // ← Retire la photo du local
+                    }
+
+                    successCount++;
+                } catch (err) {
+                    console.error(`[Archive] Échec pour ${doc.title}:`, err);
+                    errorCount++;
+                }
+            }
+
+            // 5. Sauvegarde l'état local
+            saveState();
+            renderDocuments();
+            renderDashboard();
+            updateArchiveStatus();
+            updateStorageUsage();
+
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-box-archive mr-1"></i> Archiver maintenant';
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            if (successCount > 0 && errorCount === 0) {
+                showToast(`✅ ${successCount} document(s) archivé(s) sur Drive`, 'success');
+            } else if (successCount > 0 && errorCount > 0) {
+                showToast(`⚠️ ${successCount} archivé(s), ${errorCount} échec(s)`, 'info');
+            } else {
+                showToast(`❌ Aucun document archivé`, 'error');
+            }
+        }
+
+        // Récupère un document archivé depuis Drive
+        async function restoreArchivedDocument(docId) {
+            if (!isGoogleTokenValid()) {
+                showToast('Connectez Google d\'abord', 'error');
+                return null;
+            }
+
+            const recs = getCurrentRecords();
+            const doc = recs.documents.find(d => d.id === docId);
+            if (!doc || !doc.archived || !doc.driveFileId) {
+                showToast('Document archivé introuvable', 'error');
+                return null;
+            }
+
+            const password = localStorage.getItem('santePro_drivePassword');
+            if (!password) {
+                showToast('Mot de passe de chiffrement manquant', 'error');
+                return null;
+            }
+
+            try {
+                // 1. Télécharge depuis Drive
+                const res = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${doc.driveFileId}?alt=media`,
+                    { headers: { Authorization: `Bearer ${googleAccessToken}` } }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const ciphertextB64 = await res.text();
+
+                // 2. Déchiffre
+                const plaintext = await decryptPayloadFromDrive(ciphertextB64, password);
+                const parsed = JSON.parse(plaintext);
+
+                if (!parsed.doc || !parsed.doc.photo) {
+                    throw new Error('Structure d\'archive invalide');
+                }
+
+                return parsed.doc.photo;
+            } catch (err) {
+                console.error('[Restore archive]', err);
+                showToast('❌ Impossible de récupérer l\'archive (mot de passe ?)', 'error');
+                return null;
+            }
+        }
+
+        // Affiche la photo d'un document (local OU archivé)
+        async function viewDocumentPhotoOrArchive(docId) {
+            const recs = getCurrentRecords();
+            const doc = recs.documents.find(d => d.id === docId);
+            if (!doc) return;
+
+            // Cas 1 : Photo disponible en local
+            if (doc.photo) {
+                viewDocumentPhoto(docId);
+                return;
+            }
+
+            // Cas 2 : Document archivé → téléchargement à la demande
+            if (doc.archived && doc.driveFileId) {
+                showToast('📥 Téléchargement depuis Drive...', 'info');
+                const photo = await restoreArchivedDocument(docId);
+                if (photo) {
+                    // Affiche directement dans la modale
+                    document.getElementById('photoViewerImg').src = photo;
+                    const tabs = document.getElementById('photoViewerTabs');
+                    const textContent = document.getElementById('photoViewerTextContent');
+                    if (doc.ocrText && doc.ocrText.trim()) {
+                        tabs.classList.remove('hidden');
+                        textContent.textContent = doc.ocrText;
+                        switchPhotoViewerTab('photo');
+                    } else {
+                        tabs.classList.add('hidden');
+                        switchPhotoViewerTab('photo');
+                    }
+                    document.getElementById('photoViewerModal').classList.remove('hidden');
+                    document.getElementById('photoViewerModal').classList.add('flex');
+                }
+                return;
+            }
+
+            showToast('Aucune photo disponible pour ce document', 'info');
+        }
+
+
         async function refreshDriveBackupsList() {
             const container = document.getElementById('driveBackupsList');
             if (!container) return;
@@ -4292,6 +4646,12 @@
                 hintEl.classList.remove('hidden');
                 hintText.textContent = 'Le Drive contient des données plus récentes. Cliquez sur "Charger depuis Drive" pour les récupérer.';
             }
+            
+                        // Rafraîchir aussi le statut d'archivage
+            if (typeof updateArchiveStatus === 'function') {
+                updateArchiveStatus();
+            }
+            
         }
 
         // Bouton "Charger depuis Drive"
@@ -4456,6 +4816,11 @@
             loadState();
             checkDailyAutoBackup();
             updateGoogleDriveStatus();
+            
+                        // Initialise le paramètre d'âge d'archivage
+            const ageInput = document.getElementById('archiveMinAgeMonths');
+            if (ageInput) ageInput.value = getArchiveMinAge();
+            
                         setTimeout(() => {
                 if (typeof updateSyncPanel === 'function') updateSyncPanel();
             }, 500);
