@@ -1597,7 +1597,178 @@
                 return;
             }
             
+
+
             
+            canvas.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            const ctx = canvas.getContext('2d');
+
+            // Labels = âge au moment de chaque mesure
+            const labels = recs.map(r => {
+                const ageM = ageInMonths(profile.dob, r.date);
+                const years = Math.floor(ageM / 12);
+                const months = Math.round(ageM % 12);
+                if (years === 0) return `${months} mois`;
+                return `${years}a ${months}m`;
+            });
+
+            // Données réelles de l'enfant
+            const childData = recs.map(r => r[currentGrowthMetric] || null);
+
+            // Récupère les percentiles OMS pour chaque point
+            const whoP3  = [];
+            const whoP15 = [];
+            const whoP50 = [];
+            const whoP85 = [];
+            const whoP97 = [];
+
+            recs.forEach(r => {
+                const ageM = ageInMonths(profile.dob, r.date);
+                const values = interpolateWHO(currentGrowthMetric, profile.gender, ageM);
+                if (values) {
+                    whoP3.push(values[0]);
+                    whoP15.push(values[1]);
+                    whoP50.push(values[2]);
+                    whoP85.push(values[3]);
+                    whoP97.push(values[4]);
+                } else {
+                    whoP3.push(null); whoP15.push(null); whoP50.push(null);
+                    whoP85.push(null); whoP97.push(null);
+                }
+            });
+
+            // Couleur des points selon percentile
+            const pointColors = recs.map(r => {
+                const val = r[currentGrowthMetric];
+                if (val == null) return '#4f46e5';
+                const ageM = ageInMonths(profile.dob, r.date);
+                const p = calculatePercentile(currentGrowthMetric, profile.gender, ageM, val);
+                if (!p) return '#4f46e5';
+                if (!p.inRange) return '#dc2626'; // rouge
+                return '#4f46e5'; // normal
+            });
+
+            growthChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        // Zone OMS 3-97 (bande grise)
+                        {
+                            label: 'Zone OMS (3-97%)',
+                            data: whoP3,
+                            borderColor: 'transparent',
+                            backgroundColor: 'rgba(148, 163, 184, 0.08)',
+                            pointRadius: 0,
+                            fill: '+1',
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 3e',
+                            data: whoP3,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1.5,
+                            borderDash: [4,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 15e',
+                            data: whoP15,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1,
+                            borderDash: [2,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'Médiane OMS (50%)',
+                            data: whoP50,
+                            borderColor: '#64748b',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 85e',
+                            data: whoP85,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1,
+                            borderDash: [2,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'OMS 97e',
+                            data: whoP97,
+                            borderColor: '#cbd5e1',
+                            borderWidth: 1.5,
+                            borderDash: [4,4],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.35
+                        },
+                        // Enfant
+                        {
+                            label: 'Enfant',
+                            data: childData,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.15)',
+                            borderWidth: 3,
+                            pointBackgroundColor: pointColors,
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 3,
+                            pointRadius: 7,
+                            fill: false,
+                            tension: 0.35,
+                            zIndex: 10
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: (context) => {
+                                    if (context.dataset.label !== 'Enfant') return '';
+                                    const idx = context.dataIndex;
+                                    const val = childData[idx];
+                                    if (val == null) return '';
+                                    const ageM = ageInMonths(profile.dob, recs[idx].date);
+                                    const p = calculatePercentile(currentGrowthMetric, profile.gender, ageM, val);
+                                    if (!p) return '';
+                                    return p.inRange ? `📊 ${p.label}` : `⚠️ ${p.label} — hors courbes OMS`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            title: {
+                                display: true,
+                                text: currentGrowthMetric === 'weight' ? 'Poids (kg)' :
+                                      currentGrowthMetric === 'height' ? 'Taille (cm)' : 'Périmètre Crânien (cm)',
+                                font: { size: 11, weight: 'bold' }
+                            }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+        
+                    
         // ============================================
         // ====== COMPARAISON MULTI-ENFANTS ===========
         // ============================================
@@ -1966,177 +2137,6 @@ function renderCompare() {
             container1.innerHTML = renderList(p1);
             container2.innerHTML = renderList(p2);
         }
-
-            
-            canvas.classList.remove('hidden');
-            emptyState.classList.add('hidden');
-            emptyState.classList.remove('flex');
-
-            const ctx = canvas.getContext('2d');
-
-            // Labels = âge au moment de chaque mesure
-            const labels = recs.map(r => {
-                const ageM = ageInMonths(profile.dob, r.date);
-                const years = Math.floor(ageM / 12);
-                const months = Math.round(ageM % 12);
-                if (years === 0) return `${months} mois`;
-                return `${years}a ${months}m`;
-            });
-
-            // Données réelles de l'enfant
-            const childData = recs.map(r => r[currentGrowthMetric] || null);
-
-            // Récupère les percentiles OMS pour chaque point
-            const whoP3  = [];
-            const whoP15 = [];
-            const whoP50 = [];
-            const whoP85 = [];
-            const whoP97 = [];
-
-            recs.forEach(r => {
-                const ageM = ageInMonths(profile.dob, r.date);
-                const values = interpolateWHO(currentGrowthMetric, profile.gender, ageM);
-                if (values) {
-                    whoP3.push(values[0]);
-                    whoP15.push(values[1]);
-                    whoP50.push(values[2]);
-                    whoP85.push(values[3]);
-                    whoP97.push(values[4]);
-                } else {
-                    whoP3.push(null); whoP15.push(null); whoP50.push(null);
-                    whoP85.push(null); whoP97.push(null);
-                }
-            });
-
-            // Couleur des points selon percentile
-            const pointColors = recs.map(r => {
-                const val = r[currentGrowthMetric];
-                if (val == null) return '#4f46e5';
-                const ageM = ageInMonths(profile.dob, r.date);
-                const p = calculatePercentile(currentGrowthMetric, profile.gender, ageM, val);
-                if (!p) return '#4f46e5';
-                if (!p.inRange) return '#dc2626'; // rouge
-                return '#4f46e5'; // normal
-            });
-
-            growthChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        // Zone OMS 3-97 (bande grise)
-                        {
-                            label: 'Zone OMS (3-97%)',
-                            data: whoP3,
-                            borderColor: 'transparent',
-                            backgroundColor: 'rgba(148, 163, 184, 0.08)',
-                            pointRadius: 0,
-                            fill: '+1',
-                            tension: 0.35
-                        },
-                        {
-                            label: 'OMS 3e',
-                            data: whoP3,
-                            borderColor: '#cbd5e1',
-                            borderWidth: 1.5,
-                            borderDash: [4,4],
-                            pointRadius: 0,
-                            fill: false,
-                            tension: 0.35
-                        },
-                        {
-                            label: 'OMS 15e',
-                            data: whoP15,
-                            borderColor: '#cbd5e1',
-                            borderWidth: 1,
-                            borderDash: [2,4],
-                            pointRadius: 0,
-                            fill: false,
-                            tension: 0.35
-                        },
-                        {
-                            label: 'Médiane OMS (50%)',
-                            data: whoP50,
-                            borderColor: '#64748b',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            fill: false,
-                            tension: 0.35
-                        },
-                        {
-                            label: 'OMS 85e',
-                            data: whoP85,
-                            borderColor: '#cbd5e1',
-                            borderWidth: 1,
-                            borderDash: [2,4],
-                            pointRadius: 0,
-                            fill: false,
-                            tension: 0.35
-                        },
-                        {
-                            label: 'OMS 97e',
-                            data: whoP97,
-                            borderColor: '#cbd5e1',
-                            borderWidth: 1.5,
-                            borderDash: [4,4],
-                            pointRadius: 0,
-                            fill: false,
-                            tension: 0.35
-                        },
-                        // Enfant
-                        {
-                            label: 'Enfant',
-                            data: childData,
-                            borderColor: '#4f46e5',
-                            backgroundColor: 'rgba(79, 70, 229, 0.15)',
-                            borderWidth: 3,
-                            pointBackgroundColor: pointColors,
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 3,
-                            pointRadius: 7,
-                            fill: false,
-                            tension: 0.35,
-                            zIndex: 10
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                afterLabel: (context) => {
-                                    if (context.dataset.label !== 'Enfant') return '';
-                                    const idx = context.dataIndex;
-                                    const val = childData[idx];
-                                    if (val == null) return '';
-                                    const ageM = ageInMonths(profile.dob, recs[idx].date);
-                                    const p = calculatePercentile(currentGrowthMetric, profile.gender, ageM, val);
-                                    if (!p) return '';
-                                    return p.inRange ? `📊 ${p.label}` : `⚠️ ${p.label} — hors courbes OMS`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            grid: { color: '#f1f5f9' },
-                            title: {
-                                display: true,
-                                text: currentGrowthMetric === 'weight' ? 'Poids (kg)' :
-                                      currentGrowthMetric === 'height' ? 'Taille (cm)' : 'Périmètre Crânien (cm)',
-                                font: { size: 11, weight: 'bold' }
-                            }
-                        },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-        }
-        
-        
         
         
         // --- DOCUMENTS ---
