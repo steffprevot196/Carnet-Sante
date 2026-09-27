@@ -1934,7 +1934,8 @@ function renderCompare() {
             container.innerHTML = renderCard(p1, 'indigo') + renderCard(p2, 'rose');
         }
 
-        // Graphique superposé
+        
+                // Graphique superposé
         function renderCompareChart() {
             const canvas = document.getElementById('compareChart');
             if (!canvas) return;
@@ -1967,11 +1968,11 @@ function renderCompare() {
                 .filter(r => r[currentCompareMetric] != null)
                 .sort((a,b) => a.date.localeCompare(b.date));
 
-            // Axe X basé sur l'âge en mois — on utilise la plage commune
-            const allAges = [
-                ...recs1.map(r => ageInMonths(p1.dob, r.date)),
-                ...recs2.map(r => ageInMonths(p2.dob, r.date))
-            ].sort((a, b) => a - b);
+            // Construire un ensemble d'âges communs (en mois, arrondi)
+            const ageSet = new Set();
+            recs1.forEach(r => ageSet.add(Math.round(ageInMonths(p1.dob, r.date))));
+            recs2.forEach(r => ageSet.add(Math.round(ageInMonths(p2.dob, r.date))));
+            const allAges = [...ageSet].sort((a, b) => a - b);
 
             if (allAges.length === 0) {
                 const ctx = canvas.getContext('2d');
@@ -1983,7 +1984,7 @@ function renderCompare() {
                 return;
             }
 
-            // Labels X : utiliser les âges réels en mois
+            // Labels X à partir des âges
             const labels = allAges.map(ageM => {
                 const years = Math.floor(ageM / 12);
                 const months = Math.round(ageM % 12);
@@ -1991,9 +1992,18 @@ function renderCompare() {
                 return `${years}a ${months}m`;
             });
 
-            // Mapping des mesures par âge pour chaque profil
-            const data1 = recs1.map(r => ({ x: ageInMonths(p1.dob, r.date), y: r[currentCompareMetric] }));
-            const data2 = recs2.map(r => ({ x: ageInMonths(p2.dob, r.date), y: r[currentCompareMetric] }));
+            // Aligner les données sur les âges communs (null si absent)
+            const buildAlignedData = (recs, profile) => {
+                const map = new Map();
+                recs.forEach(r => {
+                    const ageM = Math.round(ageInMonths(profile.dob, r.date));
+                    map.set(ageM, r[currentCompareMetric]);
+                });
+                return allAges.map(age => map.has(age) ? map.get(age) : null);
+            };
+
+            const data1 = buildAlignedData(recs1, p1);
+            const data2 = buildAlignedData(recs2, p2);
 
             const ctx = canvas.getContext('2d');
             compareChartInstance = new Chart(ctx, {
@@ -2003,7 +2013,7 @@ function renderCompare() {
                     datasets: [
                         {
                             label: p1.name,
-                            data: data1.map(d => d.y),
+                            data: data1,
                             borderColor: '#4f46e5',
                             backgroundColor: 'rgba(79, 70, 229, 0.1)',
                             borderWidth: 3,
@@ -2017,7 +2027,7 @@ function renderCompare() {
                         },
                         {
                             label: p2.name,
-                            data: data2.map(d => d.y),
+                            data: data2,
                             borderColor: '#f43f5e',
                             backgroundColor: 'rgba(244, 63, 94, 0.1)',
                             borderWidth: 3,
@@ -2036,10 +2046,7 @@ function renderCompare() {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
-                        }
+                        tooltip: { mode: 'index', intersect: false }
                     },
                     scales: {
                         y: {
@@ -2056,7 +2063,8 @@ function renderCompare() {
                 }
             });
         }
-
+        
+        
         // Rendez-vous fusionnés (à venir)
         function renderCompareAppointments(p1, p2) {
             const container = document.getElementById('compareAppointmentsList');
