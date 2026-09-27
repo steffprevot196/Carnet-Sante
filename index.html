@@ -318,13 +318,17 @@
                 </div>
 
 
-                <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 pt-2 border-t border-slate-100">
+                              <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-500 pt-2 border-t border-slate-100">
                     <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span> Mesures réelles</span>
                     <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> Hors courbes OMS</span>
                     <span class="flex items-center gap-2"><span class="w-3 h-0.5 bg-slate-600 inline-block"></span> Médiane OMS (50%)</span>
                     <span class="flex items-center gap-2"><span class="w-3 h-0.5 border-b border-dashed border-slate-400 inline-block"></span> Percentiles 3, 15, 85, 97</span>
                     <span class="flex items-center gap-2"><span class="w-3 h-3 bg-slate-200 inline-block rounded-sm"></span> Zone normale</span>
                 </div>
+
+                <p class="text-[11px] text-slate-400 italic text-center mt-2">
+                    ℹ️ Courbes OMS 2006 disponibles de 0 à 5 ans (60 mois). Au-delà, la médiane et les percentiles affichés sont ceux de 5 ans.
+                </p>
 
             </div>
 
@@ -1302,14 +1306,23 @@
 
         function saveState() {
             try {
-                // Marquer la date de modification (sauf si c'est un chargement Drive)
                 if (!window.__skipTouch) {
                     appState.lastModified = new Date().toISOString();
                 }
                 window.__skipTouch = false;
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
             }
-            catch(e) { console.error('saveState failed', e); }
+            catch(e) {
+                console.error('saveState failed', e);
+                if (e.name === 'QuotaExceededError' || e.code === 22 || e.number === 0x8007000E) {
+                    showToast(
+                        '⚠️ Stockage local saturé ! Archivez vos anciens documents sur Drive (Données & Sauvegardes → Archivage).',
+                        'error'
+                    );
+                } else {
+                    showToast('Erreur de sauvegarde locale : ' + e.message, 'error');
+                }
+            }
         }
 
         function loadState() {
@@ -1440,16 +1453,22 @@
             }
         }
 
-                function openModal(id)  {
-            document.getElementById(id).classList.remove('hidden');
+          function openModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('hidden');
             if (id === 'cameraModal') document.body.style.overflow = 'hidden';
             if (id === 'photoViewerModal') {
-                document.getElementById(id).classList.add('flex');
+                el.classList.add('flex');
                 document.body.style.overflow = 'hidden';
             }
         }
-                function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
+
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('hidden');
+            if (id === 'photoViewerModal') el.classList.remove('flex');
             if (id === 'cameraModal' || id === 'photoViewerModal') {
                 document.body.style.overflow = '';
             }
@@ -1457,7 +1476,24 @@
         }
 
         // --- PROFIL / RECORDS ---
-        function getCurrentProfile() {
+               function getCurrentProfile() {
+            if (!appState.profiles || appState.profiles.length === 0) {
+                const fallback = {
+                    id: 'p_default',
+                    name: 'Profil par défaut',
+                    dob: new Date().toISOString().split('T')[0],
+                    gender: 'M',
+                    avatar: '👤',
+                    bloodType: '',
+                    notes: ''
+                };
+                appState.profiles = [fallback];
+                appState.currentProfileId = fallback.id;
+                appState.records = appState.records || {};
+                appState.records[fallback.id] = { growth: [], appointments: [], documents: [], vaccines: [], milestones: [] };
+                saveState();
+                return fallback;
+            }
             return appState.profiles.find(p => p.id === appState.currentProfileId) || appState.profiles[0];
         }
 
@@ -1481,9 +1517,11 @@
             return `${years} ans`;
         }
 
-        function formatDateFR(dateStr) {
+                function formatDateFR(dateStr) {
             if (!dateStr) return '--';
-            return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '--';
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
         }
 
         // --- RENDER ---
@@ -1510,20 +1548,18 @@
             selMobile.onchange = onProfileChange;
         }
 
-          function renderAll() {
+                    function renderAll() {
             renderProfileSelectors();
             renderDashboard();
             renderGrowthView();
             renderDocuments();
             renderAppointments();
             renderVaccinesAndMilestones();
-                        renderLiaison();
+            renderLiaison();
             renderTrends();
             updateBackupStatusDisplay();
-            // Sync du panneau (après un tick pour laisser le DOM se mettre à jour)
-            if (typeof updateSyncPanel === 'function') {
-                setTimeout(() => updateSyncPanel().catch(e => console.warn('[Sync] refresh', e)), 100);
-            }
+            if (typeof updateStorageUsage === 'function') updateStorageUsage();
+            if (typeof updateArchiveStatus === 'function') updateArchiveStatus();
         }
 
         function renderDashboard() {
@@ -1647,9 +1683,10 @@
             document.getElementById('btnMetricWeight').className = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='weight' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
             document.getElementById('btnMetricHeight').className = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='height' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
             document.getElementById('btnMetricHead').className   = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='headCirc' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
+
             const bmiBtn = document.getElementById('btnMetricBmi');
             if (bmiBtn) bmiBtn.className = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='bmi' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
-                        renderGrowthChart();
+            renderGrowthChart();
         }
 
         function renderGrowthView() {
@@ -1657,40 +1694,8 @@
             renderGrowthChart();
         }
 
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-
-
-
-            const canvas = document.getElementById('growthChart');
-            const emptyState = document.getElementById('growthChartEmpty');
-            if (!canvas) return;
-
-            const profile = getCurrentProfile();
-            const recs = [...getCurrentRecords().growth].sort((a,b) => a.date.localeCompare(b.date));
-
-            if (growthChartInstance) { growthChartInstance.destroy(); growthChartInstance = null; }
-
-            if (recs.length === 0) {
-                canvas.classList.add('hidden');
-                emptyState.classList.remove('hidden');
-                emptyState.classList.add('flex');
-                return;
-            }
-            
         function renderGrowthTable() {
+
             const profile = getCurrentProfile();
             const recs = [...getCurrentRecords().growth].sort((a,b) => b.date.localeCompare(a.date));
             const tbody = document.getElementById('growthHistoryTable');
@@ -1735,8 +1740,25 @@
             });
             tbody.innerHTML = html;
         }
-function renderGrowthChart() {
-            
+
+
+        function renderGrowthChart() {
+            const canvas = document.getElementById('growthChart');
+            const emptyState = document.getElementById('growthChartEmpty');
+            if (!canvas || !emptyState) return;
+
+            const profile = getCurrentProfile();
+            const recs = [...getCurrentRecords().growth].sort((a,b) => a.date.localeCompare(b.date));
+
+            if (growthChartInstance) { growthChartInstance.destroy(); growthChartInstance = null; }
+
+            if (recs.length === 0) {
+                canvas.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
             canvas.classList.remove('hidden');
             emptyState.classList.add('hidden');
             emptyState.classList.remove('flex');
@@ -1745,6 +1767,10 @@ function renderGrowthChart() {
 
             // Labels = âge au moment de chaque mesure
             const labels = recs.map(r => {
+
+
+
+
                 const ageM = ageInMonths(profile.dob, r.date);
                 const years = Math.floor(ageM / 12);
                 const months = Math.round(ageM % 12);
@@ -2552,14 +2578,58 @@ function renderCompare() {
             renderDocuments();
         }
 
+        function renderDocumentCard(d) {
+            const photoBlock = d.photo
+                ? `<img src="${d.photo}" alt="${esc(d.title)}" class="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer" onclick="viewDocumentPhotoOrArchive('${d.id}')">`
+                : (d.archived
+                    ? `<div class="w-16 h-16 rounded-xl bg-slate-100 border border-slate-300 flex flex-col items-center justify-center text-slate-500 cursor-pointer relative" onclick="viewDocumentPhotoOrArchive('${d.id}')">
+                         <i class="fa-solid fa-cloud text-xl"></i>
+                         <span class="text-[8px] font-bold mt-0.5">ARCHIVÉ</span>
+                       </div>`
+                    : `<div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold">
+                         <i class="fa-solid ${d.category==='Imagerie'?'fa-file-image':(d.category==='Ordonnance'?'fa-file-prescription':'fa-file-medical')}"></i>
+                       </div>`);
+
+            let actionBtn;
+            if (d.photo) {
+                actionBtn = `<button onclick="viewDocumentPhotoOrArchive('${d.id}')" class="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-eye mr-1"></i>Aperçu</button>`;
+            } else if (d.archived) {
+                actionBtn = `<button onclick="viewDocumentPhotoOrArchive('${d.id}')" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>Télécharger</button>`;
+            } else {
+                actionBtn = `<button onclick="showToast('Aucune photo attachée à ce document', 'info')" class="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold rounded-lg transition cursor-not-allowed" title="Aucune photo attachée"><i class="fa-solid fa-eye-slash mr-1"></i>Aperçu</button>`;
+            }
+
+            const ocrBadge = d.ocrText
+                ? `<span class="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md mb-3 ml-1" title="Texte OCR disponible"><i class="fa-solid fa-magnifying-glass mr-0.5"></i>OCR</span>`
+                : '';
+
+            return `
+                <div class="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition group">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            ${photoBlock}
+                            <button onclick="deleteDocument('${d.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 transition opacity-0 group-hover:opacity-100 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-1 line-clamp-1" title="${esc(d.title)}">${esc(d.title)}</h4>
+                        <p class="text-[11px] text-slate-400 mb-2">${formatDateFR(d.date)} • ${esc(d.category)}</p>
+                        ${d.tags ? `<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md mb-3">${esc(d.tags)}</span>` : ''}
+                        ${ocrBadge}
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 flex gap-2">
+                        ${actionBtn}
+                    </div>
+                </div>
+            `;
+        }
+
         function renderDocuments() {
             const query = (document.getElementById('docSearchInput')?.value || '').toLowerCase();
-                        const recs = getCurrentRecords().documents.filter(d => {
+            const recs = getCurrentRecords().documents.filter(d => {
                 const matchCat = currentDocCategory === 'all' || d.category === currentDocCategory;
                 const matchQuery =
                     d.title.toLowerCase().includes(query) ||
                     (d.tags && d.tags.toLowerCase().includes(query)) ||
-                    (d.ocrText && d.ocrText.toLowerCase().includes(query)); // ← NOUVEAU
+                    (d.ocrText && d.ocrText.toLowerCase().includes(query));
                 return matchCat && matchQuery;
             }).sort((a,b) => b.date.localeCompare(a.date));
 
@@ -2569,41 +2639,7 @@ function renderCompare() {
                 return;
             }
 
-            grid.innerHTML = recs.map(d => `
-                <div class="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition group">
-                    <div>
-                        
-                                                <div class="flex justify-between items-start mb-3">
-                            ${d.photo
-                                ? `<img src="${d.photo}" alt="${esc(d.title)}" class="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer" onclick="viewDocumentPhotoOrArchive('${d.id}')">`
-                                : (d.archived
-                                    ? `<div class="w-16 h-16 rounded-xl bg-slate-100 border border-slate-300 flex flex-col items-center justify-center text-slate-500 cursor-pointer relative" onclick="viewDocumentPhotoOrArchive('${d.id}')">
-                                         <i class="fa-solid fa-cloud text-xl"></i>
-                                         <span class="text-[8px] font-bold mt-0.5">ARCHIVÉ</span>
-                                       </div>`
-                                    : `<div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold">
-                                         <i class="fa-solid ${d.category==='Imagerie'?'fa-file-image':(d.category==='Ordonnance'?'fa-file-prescription':'fa-file-medical')}"></i>
-                                       </div>`)}
-
-                            <button onclick="deleteDocument('${d.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 transition opacity-0 group-hover:opacity-100 p-1"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>
-                        
-                        <h4 class="font-bold text-slate-800 text-sm mb-1 line-clamp-1" title="${esc(d.title)}">${esc(d.title)}</h4>
-                        <p class="text-[11px] text-slate-400 mb-2">${formatDateFR(d.date)} • ${esc(d.category)}</p>
-                        ${d.tags ? `<span class="inline-block bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-md mb-3">${esc(d.tags)}</span>` : ''}
-                                                ${d.ocrText ? `<span class="inline-block bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md mb-3 ml-1" title="Texte OCR disponible"><i class="fa-solid fa-magnifying-glass mr-0.5"></i>OCR</span>` : ''}
-                    </div>
-                    
-                                        <div class="pt-3 border-t border-slate-100 flex gap-2">
-                        ${d.photo
-                            ? `<button onclick="viewDocumentPhotoOrArchive('${d.id}')" class="flex-1 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-eye mr-1"></i>Aperçu</button>`
-                            : (d.archived
-                                ? `<button onclick="viewDocumentPhotoOrArchive('${d.id}')" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>Télécharger</button>`
-                                : `<button onclick="showToast('Aucune photo attachée à ce document', 'info')" class="flex-1 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold rounded-lg transition cursor-not-allowed" title="Aucune photo attachée"><i class="fa-solid fa-eye-slash mr-1"></i>Aperçu</button>`)}
-                    </div>
-                    
-                </div>
-            `).join('');
+            grid.innerHTML = recs.map(renderDocumentCard).join('');
         }
 
         function simulateScanner() {
@@ -3598,18 +3634,57 @@ function renderCompare() {
             if (p.percentile < 97) {
                 return { level: 'overweight', label: 'Surpoids', color: 'text-orange-800', bg: 'bg-orange-100', emoji: '🟠' };
             }
-            return { level: 'obese', label: 'Obésité', color: 'text-red-800', bg: 'bg-red-100', emoji: '🔴' };
+                        return { level: 'obese', label: 'Obésité', color: 'text-red-800', bg: 'bg-red-100', emoji: '🔴' };
         }
-        
+
+        // Détermine le percentile approximatif d'une valeur selon les courbes OMS
+        // Retourne { percentile: number, inRange: bool, label: string } ou null
+        function calculatePercentile(metric, gender, ageMonths, value) {
+            const values = interpolateWHO(metric, gender, ageMonths);
+            if (!values) return null;
+
+            const [p3, p15, p50, p85, p97] = values;
+
+            // Interpolation linéaire par morceaux entre percentiles
+            let percentile;
+            if (value < p3) {
+                percentile = Math.max(0, 3 * (value / p3));
+            } else if (value < p15) {
+                percentile = 3 + 12 * ((value - p3) / (p15 - p3));
+            } else if (value < p50) {
+                percentile = 15 + 35 * ((value - p15) / (p50 - p15));
+            } else if (value < p85) {
+                percentile = 50 + 35 * ((value - p50) / (p85 - p50));
+            } else if (value < p97) {
+                percentile = 85 + 12 * ((value - p85) / (p97 - p85));
+            } else {
+                percentile = Math.min(100, 97 + 3 * ((value - p97) / Math.max(p97 * 0.1, 0.5)));
+            }
+
+            percentile = Math.round(percentile);
+            const inRange = percentile >= 3 && percentile <= 97;
+
+            // Label lisible
+            let label;
+            if (percentile < 3) label = `< ${3}%`;
+            else if (percentile < 15) label = `P${percentile}`;
+            else if (percentile < 50) label = `P${percentile}`;
+            else if (percentile < 85) label = `P${percentile}`;
+            else if (percentile < 97) label = `P${percentile}`;
+            else label = `> 97%`;
+
+            return { percentile, inRange, label };
+        }
+
         const QR_URL_LIMIT = 2900;
 
-        async function deriveKeyFromPassword(password, salt) {
+                async function deriveKeyFromPassword(password, salt, iterations = 100000) {
             const enc = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
-                'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey', 'deriveBits']
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
             );
             return crypto.subtle.deriveKey(
-                { name: 'PBKDF2', salt: enc.encode(salt), iterations: 100000, hash: 'SHA-256' },
+                { name: 'PBKDF2', salt: enc.encode(salt), iterations, hash: 'SHA-256' },
                 keyMaterial,
                 { name: 'AES-GCM', length: 256 },
                 false, ['encrypt', 'decrypt']
@@ -3883,8 +3958,8 @@ function renderCompare() {
                 category: document.getElementById('docCategory').value,
                 tags: document.getElementById('docTags').value.trim(),
                 fileType: fileType,
-                photo: capturedDocPhotoDataUrl || null,
-                ocrText: ocrText // ← NOUVEAU
+                                photo: capturedDocPhotoDataUrl || null,
+                ocrText: ocrText
             });
             // Réinitialiser l'état photo
             capturedDocPhotoDataUrl = null;
@@ -4413,8 +4488,7 @@ function renderCompare() {
                 switchPhotoViewerTab('photo');
             }
 
-            document.getElementById('photoViewerModal').classList.remove('hidden');
-            document.getElementById('photoViewerModal').classList.add('flex');
+                        openModal('photoViewerModal');
         }
 
         function switchPhotoViewerTab(tab) {
@@ -4788,14 +4862,12 @@ function renderCompare() {
                     showToast('✅ Google Drive connecté', 'success');
                     renderAppointments();
                     performEncryptedDriveBackup();
-                    // Rafraîchir le panneau de sync
+                                       // Rafraîchir le panneau de sync (une seule fois)
                     setTimeout(() => {
-                        if (typeof updateSyncPanel === 'function') updateSyncPanel();
+                        if (typeof updateSyncPanel === 'function') {
+                            updateSyncPanel().catch(e => console.warn('[Sync]', e));
+                        }
                     }, 1000);
-                    // Rafraîchir aussi le panneau de sync (si présent)
-            if (typeof updateSyncPanel === 'function') {
-                updateSyncPanel().catch(e => console.warn('[Sync] refresh', e));
-            }
                 }   
                 
             });
@@ -4904,17 +4976,8 @@ function renderCompare() {
         }
 
         // --- CHIFFREMENT AES-GCM ---
-        async function deriveDriveKey(password) {
-            const enc = new TextEncoder();
-            const keyMaterial = await crypto.subtle.importKey(
-                'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
-            );
-            return crypto.subtle.deriveKey(
-                { name: 'PBKDF2', salt: enc.encode(DRIVE_ENC_SALT), iterations: 150000, hash: 'SHA-256' },
-                keyMaterial,
-                { name: 'AES-GCM', length: 256 },
-                false, ['encrypt', 'decrypt']
-            );
+            async function deriveDriveKey(password) {
+            return deriveKeyFromPassword(password, DRIVE_ENC_SALT, 150000);
         }
 
         async function encryptPayloadForDrive(plaintext, password) {
@@ -5310,8 +5373,7 @@ function renderCompare() {
                         tabs.classList.add('hidden');
                         switchPhotoViewerTab('photo');
                     }
-                    document.getElementById('photoViewerModal').classList.remove('hidden');
-                    document.getElementById('photoViewerModal').classList.add('flex');
+                             openModal('photoViewerModal');
                 }
                 return;
             }
@@ -5714,8 +5776,10 @@ function renderCompare() {
             const ageInput = document.getElementById('archiveMinAgeMonths');
             if (ageInput) ageInput.value = getArchiveMinAge();
             
-                        setTimeout(() => {
-                if (typeof updateSyncPanel === 'function') updateSyncPanel();
+                                    setTimeout(() => {
+                if (typeof updateSyncPanel === 'function') {
+                    updateSyncPanel().catch(e => console.warn('[Sync]', e));
+                }
             }, 500);
 
 
@@ -5764,10 +5828,16 @@ function renderCompare() {
                 });
             }
 
-            document.addEventListener('keydown', (e) => {
+                       document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    document.querySelectorAll('.fixed.inset-0.z-50:not(.hidden)').forEach(m => {
-                        if (m.id && m.id.endsWith('Modal')) m.classList.add('hidden');
+                    const modals = ['addProfileModal', 'addGrowthModal', 'addDocumentModal',
+                                    'cameraModal', 'addAppointmentModal', 'addVaccineModal',
+                                    'addMilestoneModal', 'photoViewerModal', 'resetConfirmModal'];
+                    modals.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el && !el.classList.contains('hidden')) {
+                            closeModal(id);
+                        }
                     });
                 }
             });
