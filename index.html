@@ -303,6 +303,7 @@
                 <button onclick="setGrowthMetric('weight')" id="btnMetricWeight" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm"><i class="fa-solid fa-weight-scale mr-1.5"></i> Poids (kg)</button>
                 <button onclick="setGrowthMetric('height')" id="btnMetricHeight" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-ruler-vertical mr-1.5"></i> Taille (cm)</button>
                 <button onclick="setGrowthMetric('headCirc')" id="btnMetricHead" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-circle-dot mr-1.5"></i> Périmètre Crânien (cm)</button>
+                                <button onclick="setGrowthMetric('bmi')" id="btnMetricBmi" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-calculator mr-1.5"></i> IMC</button>
             </div>
 
             <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
@@ -332,7 +333,7 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-50 text-slate-400 uppercase text-[11px] font-bold tracking-wider border-b border-slate-100">
-                                <th class="p-4">Date Relevé</th><th class="p-4">Âge au Relevé</th><th class="p-4">Poids</th><th class="p-4">Taille</th><th class="p-4">Périmètre Crânien</th><th class="p-4 text-right">Actions</th>
+                                                                <th class="p-4">Date Relevé</th><th class="p-4">Âge au Relevé</th><th class="p-4">Poids</th><th class="p-4">Taille</th><th class="p-4">Périmètre Crânien</th><th class="p-4">IMC</th><th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="growthHistoryTable" class="text-sm divide-y divide-slate-100 font-medium"></tbody>
@@ -384,6 +385,7 @@
                         <button onclick="setCompareMetric('weight')" id="compareBtnWeight" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white">Poids</button>
                         <button onclick="setCompareMetric('height')" id="compareBtnHeight" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">Taille</button>
                         <button onclick="setCompareMetric('headCirc')" id="compareBtnHead" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">Périmètre Crânien</button>
+                                                <button onclick="setCompareMetric('bmi')" id="compareBtnBmi" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100">IMC</button>
                     </div>
                 </div>
                 <div class="relative h-80 md:h-96 w-full">
@@ -1478,7 +1480,8 @@
                 document.getElementById('statHeight').innerText = '-- cm';
             }
    
-   
+               // IMC dans le 4ème badge (remplace le compteur vaccins par défaut, optionnel)
+            // Ceci est purement indicatif — l'IMC seul ne suffit pas à évaluer un enfant.
 
             const doneVac = recs.vaccines.filter(v => v.status === 'done').length;
             document.getElementById('statVaccines').innerText = `${doneVac} / ${recs.vaccines.length} faits`;
@@ -1532,12 +1535,14 @@
         }
 
         // --- GROWTH ---
-        function setGrowthMetric(metric) {
+               function setGrowthMetric(metric) {
             currentGrowthMetric = metric;
             document.getElementById('btnMetricWeight').className = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='weight' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
             document.getElementById('btnMetricHeight').className = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='height' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
             document.getElementById('btnMetricHead').className   = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='headCirc' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
-            renderGrowthChart();
+            const bmiBtn = document.getElementById('btnMetricBmi');
+            if (bmiBtn) bmiBtn.className = `px-4 py-2 rounded-xl text-xs font-bold transition-all ${metric==='bmi' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`;
+                        renderGrowthChart();
         }
 
         function renderGrowthView() {
@@ -1568,16 +1573,20 @@
                 return `<span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded ml-1">${p.label}</span>`;
             };
 
-            tbody.innerHTML = recs.map(r => `
+                       tbody.innerHTML = recs.map(r => {
+                const bmi = (r.weight && r.height) ? (r.weight / Math.pow(r.height / 100, 2)) : null;
+                return `
                 <tr class="hover:bg-slate-50/80 transition">
                     <td class="p-4 font-semibold text-slate-800">${formatDateFR(r.date)}</td>
                     <td class="p-4 text-slate-500">${calculateAgeStr(profile.dob, r.date)}</td>
                     <td class="p-4 font-bold text-slate-800">${r.weight ? r.weight + ' kg' : '--'}${badgePercentile('weight', r.weight, r.date)}</td>
                     <td class="p-4 font-bold text-slate-800">${r.height ? r.height + ' cm' : '--'}${badgePercentile('height', r.height, r.date)}</td>
                     <td class="p-4 font-bold text-slate-800">${r.headCirc ? r.headCirc + ' cm' : '--'}${badgePercentile('headCirc', r.headCirc, r.date)}</td>
+                    <td class="p-4 font-bold text-slate-800">${bmi ? bmi.toFixed(1) : '--'}${bmi ? badgePercentile('bmi', bmi, r.date) : ''}</td>
                     <td class="p-4 text-right"><button onclick="deleteGrowthRecord('${r.id}')" aria-label="Supprimer" class="text-slate-300 hover:text-rose-600 p-1 transition"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
       
                 function renderGrowthChart() {
@@ -1615,8 +1624,13 @@
                 return `${years}a ${months}m`;
             });
 
-            // Données réelles de l'enfant
-            const childData = recs.map(r => r[currentGrowthMetric] || null);
+                        // Données réelles de l'enfant (avec calcul d'IMC si nécessaire)
+            const childData = recs.map(r => {
+                if (currentGrowthMetric === 'bmi') {
+                    return (r.weight && r.height) ? (r.weight / Math.pow(r.height / 100, 2)) : null;
+                }
+                return r[currentGrowthMetric] || null;
+            });
 
             // Récupère les percentiles OMS pour chaque point
             const whoP3  = [];
@@ -1757,8 +1771,9 @@
                             grid: { color: '#f1f5f9' },
                             title: {
                                 display: true,
-                                text: currentGrowthMetric === 'weight' ? 'Poids (kg)' :
-                                      currentGrowthMetric === 'height' ? 'Taille (cm)' : 'Périmètre Crânien (cm)',
+                                                                text: currentGrowthMetric === 'weight' ? 'Poids (kg)' :
+                                      currentGrowthMetric === 'height' ? 'Taille (cm)' :
+                                      currentGrowthMetric === 'bmi' ? 'IMC (kg/m²)' : 'Périmètre Crânien (cm)',
                                 font: { size: 11, weight: 'bold' }
                             }
                         },
@@ -1825,15 +1840,13 @@
         }
 
         // Changement de métrique comparée
-        function setCompareMetric(metric) {
+                function setCompareMetric(metric) {
             currentCompareMetric = metric;
-            ['Weight', 'Height', 'Head'].forEach(m => {
-                const btn = document.getElementById(`compareBtn${m}`);
+            const mapping = { weight: 'Weight', height: 'Height', headCirc: 'Head', bmi: 'Bmi' };
+            Object.entries(mapping).forEach(([key, suffix]) => {
+                const btn = document.getElementById(`compareBtn${suffix}`);
                 if (!btn) return;
-                const isActive = (metric === 'weight' && m === 'Weight') ||
-                                 (metric === 'height' && m === 'Height') ||
-                                 (metric === 'headCirc' && m === 'Head');
-                btn.className = isActive
+                btn.className = (metric === key)
                     ? 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white'
                     : 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:bg-slate-100';
             });
@@ -1912,7 +1925,8 @@ function renderCompare() {
                                 <p class="text-xs text-slate-500">${age} • ${p.gender === 'M' ? 'Garçon' : 'Fille'}</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 text-center">
+                        
+                                                <div class="grid grid-cols-4 gap-2 text-center">
                             <div class="bg-slate-50 rounded-lg p-2">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Poids</p>
                                 <p class="text-sm font-black text-slate-800">${latest?.weight ? latest.weight + ' kg' : '--'}</p>
@@ -1922,10 +1936,19 @@ function renderCompare() {
                                 <p class="text-sm font-black text-slate-800">${latest?.height ? latest.height + ' cm' : '--'}</p>
                             </div>
                             <div class="bg-slate-50 rounded-lg p-2">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">IMC</p>
+                                <p class="text-sm font-black text-slate-800">${
+                                    (latest?.weight && latest?.height)
+                                        ? (latest.weight / Math.pow(latest.height / 100, 2)).toFixed(1)
+                                        : '--'
+                                }</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-2">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Vaccins</p>
                                 <p class="text-sm font-black text-slate-800">${doneVac}/${recs.vaccines.length}</p>
                             </div>
                         </div>
+                        
                         ${p.notes ? `<p class="mt-3 text-[11px] text-slate-500 italic line-clamp-1">${esc(p.notes)}</p>` : ''}
                     </div>
                 `;
@@ -1961,11 +1984,19 @@ function renderCompare() {
                 return;
             }
 
+                        // Helper qui extrait la valeur selon la métrique (IMC calculé à la volée)
+            const extractValue = (r) => {
+                if (currentCompareMetric === 'bmi') {
+                    return (r.weight && r.height) ? (r.weight / Math.pow(r.height / 100, 2)) : null;
+                }
+                return r[currentCompareMetric] != null ? r[currentCompareMetric] : null;
+            };
+
             const recs1 = [...getRecordsForProfile(p1.id).growth]
-                .filter(r => r[currentCompareMetric] != null)
+                .filter(r => extractValue(r) != null)
                 .sort((a,b) => a.date.localeCompare(b.date));
             const recs2 = [...getRecordsForProfile(p2.id).growth]
-                .filter(r => r[currentCompareMetric] != null)
+                .filter(r => extractValue(r) != null)
                 .sort((a,b) => a.date.localeCompare(b.date));
 
             // Construire un ensemble d'âges communs (en mois, arrondi)
@@ -1993,11 +2024,11 @@ function renderCompare() {
             });
 
             // Aligner les données sur les âges communs (null si absent)
-            const buildAlignedData = (recs, profile) => {
+                        const buildAlignedData = (recs, profile) => {
                 const map = new Map();
                 recs.forEach(r => {
                     const ageM = Math.round(ageInMonths(profile.dob, r.date));
-                    map.set(ageM, r[currentCompareMetric]);
+                    map.set(ageM, extractValue(r));
                 });
                 return allAges.map(age => map.has(age) ? map.get(age) : null);
             };
@@ -2053,8 +2084,9 @@ function renderCompare() {
                             grid: { color: '#f1f5f9' },
                             title: {
                                 display: true,
-                                text: currentCompareMetric === 'weight' ? 'Poids (kg)' :
-                                      currentCompareMetric === 'height' ? 'Taille (cm)' : 'Périmètre Crânien (cm)',
+                                                                text: currentCompareMetric === 'weight' ? 'Poids (kg)' :
+                                      currentCompareMetric === 'height' ? 'Taille (cm)' :
+                                      currentCompareMetric === 'bmi' ? 'IMC (kg/m²)' : 'Périmètre Crânien (cm)',
                                 font: { size: 11, weight: 'bold' }
                             }
                         },
@@ -2582,9 +2614,12 @@ function renderCompare() {
                 .sort((a, b) => a.date.localeCompare(b.date));
             const nextAppt = futureAppts[0] || null;
 
-            return {
+                        return {
                 weight: lastGrowth?.weight || null,
                 height: lastGrowth?.height || null,
+                bmi: (lastGrowth?.weight && lastGrowth?.height) 
+                    ? (lastGrowth.weight / Math.pow(lastGrowth.height / 100, 2)) 
+                    : null,
                 lastGrowthDate: lastGrowth?.date || null,
                 vaccines: recentVaccines,
                 tetanosDate: tetanosVaccine?.targetDate || null,
@@ -3091,7 +3126,8 @@ function renderCompare() {
                     54: [47.5, 48.7, 49.9, 51.1, 52.3],
                     60: [47.7, 48.9, 50.1, 51.3, 52.5]
                 },
-                F: {
+               
+                               F: {
                     0:  [31.7, 32.9, 33.9, 34.9, 36.1],
                     6:  [39.5, 40.9, 42.2, 43.5, 44.9],
                     12: [42.3, 43.4, 44.7, 46.0, 47.1],
@@ -3104,9 +3140,40 @@ function renderCompare() {
                     54: [46.1, 47.3, 48.5, 49.7, 50.9],
                     60: [46.3, 47.5, 48.7, 49.9, 51.1]
                 }
+            },
+            // ---- IMC (kg/m²) ----
+            // Source : WHO Child Growth Standards 2006 — BMI-for-age
+            bmi: {
+                M: {
+                    0:  [10.2, 11.1, 13.4, 16.0, 18.4],
+                    6:  [13.2, 14.0, 15.8, 17.8, 19.4],
+                    12: [13.4, 14.2, 15.9, 17.7, 19.2],
+                    18: [13.1, 13.9, 15.5, 17.3, 18.7],
+                    24: [12.7, 13.5, 15.1, 16.9, 18.3],
+                    30: [12.4, 13.2, 14.8, 16.6, 18.0],
+                    36: [12.2, 13.0, 14.6, 16.4, 17.8],
+                    42: [12.0, 12.9, 14.5, 16.3, 17.7],
+                    48: [11.9, 12.8, 14.4, 16.2, 17.7],
+                    54: [11.9, 12.7, 14.4, 16.2, 17.7],
+                    60: [11.8, 12.7, 14.4, 16.3, 17.9]
+                },
+                F: {
+                    0:  [10.1, 11.0, 13.3, 15.9, 18.3],
+                    6:  [12.7, 13.6, 15.4, 17.5, 19.3],
+                    12: [12.8, 13.7, 15.5, 17.5, 19.2],
+                    18: [12.5, 13.4, 15.2, 17.2, 18.9],
+                    24: [12.2, 13.1, 14.9, 16.9, 18.6],
+                    30: [11.9, 12.9, 14.7, 16.8, 18.5],
+                    36: [11.8, 12.7, 14.6, 16.7, 18.5],
+                    42: [11.6, 12.6, 14.5, 16.7, 18.6],
+                    48: [11.5, 12.5, 14.5, 16.8, 18.8],
+                    54: [11.5, 12.5, 14.6, 16.9, 19.0],
+                    60: [11.5, 12.6, 14.7, 17.1, 19.3]
+                }
             }
         };
 
+               
         // Interpole les valeurs OMS pour un âge donné (en mois)
         // Retourne [p3, p15, p50, p85, p97]
         function interpolateWHO(metric, gender, ageMonths) {
